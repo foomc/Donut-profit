@@ -31,6 +31,8 @@ public final class ProfitTracker {
 
 	// Chat mode
 	private static double chatProfit = 0;
+	private static double lastRes = 1;
+	private static double baselineRes = 1;
 
 	private static long ticks = 0;
 
@@ -48,7 +50,7 @@ public final class ProfitTracker {
 	}
 
 	public static double profit() {
-		return boardActive() ? current - baseline : (hasBaseline ? current - baseline : chatProfit);
+		return chatProfit;
 	}
 
 	public static void tick(MinecraftClient client) {
@@ -59,18 +61,25 @@ public final class ProfitTracker {
 		Double balance = readBalance(sidebarLines(client));
 		if (balance == null) return;
 
+		double res = lastRes;
 		current = balance;
 		lastBoardRead = ticks;
 		if (!hasBaseline) {
 			baseline = balance;
+			baselineRes = res;
 			hasBaseline = true;
 			chatProfit = 0;
+		} else {
+			// The sidebar is rounded (e.g. $1.4B). If chat tracking is off by more than the
+			// rounding error, chat missed something, so trust the sidebar.
+			double board = current - baseline;
+			double tolerance = res + baselineRes;
+			if (Math.abs(board - chatProfit) > tolerance) chatProfit = board;
 		}
 	}
 
 	/** Called for every game chat message. Only used when no scoreboard balance is available. */
 	public static void onChat(String raw) {
-		if (hasBaseline) return;
 		String msg = normalize(raw);
 		String low = msg.toLowerCase();
 
@@ -138,6 +147,18 @@ public final class ProfitTracker {
 	private static Double toNumber(String num, String suffix) {
 		try {
 			double v = Double.parseDouble(num.replace(",", ""));
+			int decimals = num.contains(".") ? num.length() - num.indexOf('.') - 1 : 0;
+			double unit = 1;
+			if (suffix != null && !suffix.isEmpty()) {
+				switch (Character.toUpperCase(suffix.charAt(0))) {
+					case 'K' -> unit = 1_000d;
+					case 'M' -> unit = 1_000_000d;
+					case 'B' -> unit = 1_000_000_000d;
+					case 'T' -> unit = 1_000_000_000_000d;
+					default -> {}
+				}
+			}
+			lastRes = unit / Math.pow(10, decimals);
 			if (suffix != null && !suffix.isEmpty()) {
 				switch (Character.toUpperCase(suffix.charAt(0))) {
 					case 'K' -> v *= 1_000d;
@@ -192,7 +213,6 @@ public final class ProfitTracker {
 	}
 
 	public static String status() {
-		return "mode=" + (hasBaseline ? "scoreboard" : "chat")
-				+ " baseline=" + baseline + " current=" + current + " chatProfit=" + chatProfit;
+		return "baseline=" + baseline + " current=" + current + " chatProfit=" + chatProfit;
 	}
 }

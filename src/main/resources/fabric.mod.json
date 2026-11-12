@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "donutprofit",
+  "version": "${version}",
+  "name": "Donut Profit",
+  "description": "Rainbow 'Profit of the Day' HUD that tracks how much money you've made this session.",
+  "authors": ["You"],
+  "license": "MIT",
+  "environment": "client",
+  "entrypoints": {
+    "client": ["com.donutprofit.ProfitClient"]
+  },
+  "depends": {
+    "fabricloader": ">=0.18.0",
+    "minecraft": "~1.21.11",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}

@@ -11,8 +11,7 @@ import java.awt.Color;
 public final class ProfitHud {
 	public static boolean visible = true;
 
-	private static final int X = 8;
-	private static final int Y = 8;
+	private static final int Y = 6;
 	private static final int PAD = 7;
 	private static final int BAR = 3;
 	private static final float AMOUNT_SCALE = 2.0f;
@@ -43,6 +42,8 @@ public final class ProfitHud {
 		int amountW = Math.round(tr.getWidth(amount) * AMOUNT_SCALE);
 		int w = BAR + PAD * 2 + Math.max(titleW, amountW);
 		int h = PAD * 2 + tr.fontHeight + 4 + Math.round(tr.fontHeight * AMOUNT_SCALE);
+
+		final int X = (ctx.getScaledWindowWidth() - w) / 2; // top middle
 
 		// Background + animated rainbow border
 		roundedFill(ctx, X, Y, w, h, 3, 0xD0101018);

@@ -1,10 +1,10 @@
 package com.donutprofit;
 
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.scoreboard.Scoreboard;
 import net.minecraft.scoreboard.ScoreboardDisplaySlot;
 import net.minecraft.scoreboard.ScoreboardEntry;
 import net.minecraft.scoreboard.ScoreboardObjective;
-import net.minecraft.scoreboard.Scoreboard;
 import net.minecraft.scoreboard.Team;
 import net.minecraft.text.Text;
 
@@ -13,14 +13,26 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/** Reads your balance off the sidebar scoreboard and tracks profit since the game was launched. */
+/**
+ * Tracks profit since the game was launched.
+ * Primary source: the sidebar scoreboard balance. Fallback: chat messages
+ * ("X paid you $5K", "You sold ... for $2M") when no balance is on the sidebar.
+ * Everything is in memory only, so it resets when the game closes.
+ */
 public final class ProfitTracker {
-	private static final Pattern NUMBER = Pattern.compile("\\$?\\s*([0-9][0-9,]*(?:\\.[0-9]+)?)\\s*([KkMmBbTt])?");
+	private static final Pattern AMOUNT = Pattern.compile("\\$\\s*([0-9][0-9,]*(?:\\.[0-9]+)?)\\s*([kKmMbBtT])?(?![a-zA-Z])");
+	private static final Pattern LOOSE_AMOUNT = Pattern.compile("([0-9][0-9,]*(?:\\.[0-9]+)?)\\s*([kKmMbBtT])?(?![a-zA-Z0-9])");
 
+	// Scoreboard mode
 	private static boolean hasBaseline = false;
 	private static double baseline = 0;
 	private static double current = 0;
-	private static int ticks = 0;
+	private static long lastBoardRead = -100000;
+
+	// Chat mode
+	private static double chatProfit = 0;
+
+	private static long ticks = 0;
 
 	private ProfitTracker() {}
 
@@ -28,67 +40,105 @@ public final class ProfitTracker {
 		hasBaseline = false;
 		baseline = 0;
 		current = 0;
+		chatProfit = 0;
 	}
 
-	/** Profit since the game was launched (or since /profit reset). */
+	private static boolean boardActive() {
+		return hasBaseline && ticks - lastBoardRead < 200;
+	}
+
 	public static double profit() {
-		return hasBaseline ? current - baseline : 0;
+		return boardActive() ? current - baseline : (hasBaseline ? current - baseline : chatProfit);
 	}
 
 	public static void tick(MinecraftClient client) {
+		ticks++;
 		if (client.world == null || client.player == null) return;
-		if (++ticks % 10 != 0) return;
+		if (ticks % 10 != 0) return;
 
-		Double balance = readBalance(client);
+		Double balance = readBalance(sidebarLines(client));
 		if (balance == null) return;
 
 		current = balance;
+		lastBoardRead = ticks;
 		if (!hasBaseline) {
 			baseline = balance;
 			hasBaseline = true;
+			chatProfit = 0;
 		}
 	}
 
-	private static Double readBalance(MinecraftClient client) {
+	/** Called for every game chat message. Only used when no scoreboard balance is available. */
+	public static void onChat(String raw) {
+		if (hasBaseline) return;
+		String msg = normalize(raw);
+		String low = msg.toLowerCase();
+
+		Matcher m = AMOUNT.matcher(msg);
+		if (!m.find()) return;
+		Double v = toNumber(m.group(1), m.group(2));
+		if (v == null) return;
+
+		if (low.contains("paid you") || low.contains("sent you") || low.contains("you received")
+				|| (low.contains("sold") && low.contains("for"))) {
+			chatProfit += v;
+		} else if (low.contains("you paid") || low.contains("you sent")) {
+			chatProfit -= v;
+		}
+	}
+
+	// ---------- sidebar reading ----------
+
+	public static List<String> sidebarLines(MinecraftClient client) {
+		List<String> lines = new ArrayList<>();
+		if (client.world == null) return lines;
 		Scoreboard sb = client.world.getScoreboard();
 		ScoreboardObjective obj = sb.getObjectiveForSlot(ScoreboardDisplaySlot.SIDEBAR);
-		if (obj == null) return null;
+		if (obj == null) return lines;
 
-		List<String> lines = new ArrayList<>();
 		for (ScoreboardEntry entry : sb.getScoreboardEntries(obj)) {
 			Team team = sb.getScoreHolderTeam(entry.owner());
 			String line = Team.decorateName(team, Text.literal(entry.owner())).getString();
-			lines.add(strip(line));
+			lines.add(normalize(line));
 		}
+		return lines;
+	}
 
-		// Prefer a line mentioning "money", fall back to any line with a $ amount.
+	static Double readBalance(List<String> lines) {
+		// 1) a line that mentions money / balance / bal / cash
 		for (String line : lines) {
-			if (line.toLowerCase().contains("money")) {
-				Double v = parse(line.substring(line.toLowerCase().indexOf("money") + 5));
-				if (v != null) return v;
+			String low = line.toLowerCase();
+			for (String key : new String[]{"money", "balance", "bal", "cash"}) {
+				int idx = low.indexOf(key);
+				if (idx >= 0) {
+					Double v = parseAny(line.substring(idx + key.length()));
+					if (v != null) return v;
+				}
 			}
 		}
+		// 2) any line with a $ amount
 		for (String line : lines) {
-			if (line.contains("$")) {
-				Double v = parse(line.substring(line.indexOf('$')));
+			int idx = line.indexOf('$');
+			if (idx >= 0) {
+				Double v = parseAny(line.substring(idx));
 				if (v != null) return v;
 			}
 		}
 		return null;
 	}
 
-	private static String strip(String s) {
-		return s.replaceAll("§.", "").trim();
+	private static Double parseAny(String s) {
+		Matcher m = AMOUNT.matcher(s);
+		if (m.find()) return toNumber(m.group(1), m.group(2));
+		m = LOOSE_AMOUNT.matcher(s);
+		if (m.find()) return toNumber(m.group(1), m.group(2));
+		return null;
 	}
 
-	/** Parses things like "$1,234,567", "$84M", "$1.25B". */
-	static Double parse(String s) {
-		Matcher m = NUMBER.matcher(s);
-		if (!m.find()) return null;
+	private static Double toNumber(String num, String suffix) {
 		try {
-			double v = Double.parseDouble(m.group(1).replace(",", ""));
-			String suffix = m.group(2);
-			if (suffix != null) {
+			double v = Double.parseDouble(num.replace(",", ""));
+			if (suffix != null && !suffix.isEmpty()) {
 				switch (Character.toUpperCase(suffix.charAt(0))) {
 					case 'K' -> v *= 1_000d;
 					case 'M' -> v *= 1_000_000d;
@@ -103,7 +153,23 @@ public final class ProfitTracker {
 		}
 	}
 
-	/** Formats 84_000_000 as "$84M", 1_250_000 as "$1.25M". */
+	private static final String SMALL_CAPS = "ᴀʙᴄᴅᴇꜰɢʜɪᴊᴋʟᴍɴᴏᴘǫʀꜱᴛᴜᴠᴡxʏᴢ";
+
+	/** Strips colour codes and converts small-caps letters (used by some servers) to normal ones. */
+	static String normalize(String s) {
+		s = s.replaceAll("§.", "");
+		StringBuilder sb = new StringBuilder();
+		for (char c : s.toCharArray()) {
+			int i = SMALL_CAPS.indexOf(c);
+			if (i >= 0 && c != 'x') sb.append((char) ('a' + i));
+			else sb.append(c);
+		}
+		return sb.toString().trim();
+	}
+
+	// ---------- formatting ----------
+
+	/** Formats 84_000_000 as "+$84M", 1_250_000 as "+$1.25M". */
 	public static String format(double value) {
 		double abs = Math.abs(value);
 		String[] suffixes = {"", "K", "M", "B", "T"};
@@ -123,5 +189,10 @@ public final class ProfitTracker {
 			if (s.endsWith(".")) s = s.substring(0, s.length() - 1);
 		}
 		return s;
+	}
+
+	public static String status() {
+		return "mode=" + (hasBaseline ? "scoreboard" : "chat")
+				+ " baseline=" + baseline + " current=" + current + " chatProfit=" + chatProfit;
 	}
 }

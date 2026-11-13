@@ -14,6 +14,10 @@ public final class ProfitConfig {
 	public static final String[] COLOR_MODES = {"Rainbow", "Green", "Gold", "White", "Cyan", "Pink"};
 	public static final int[] COLOR_VALUES = {0, 0x55FF55, 0xFFC400, 0xFFFFFF, 0x55FFFF, 0xFF66CC};
 
+	public static final String[] MENU_ACCENTS = {"Blue", "Green", "Pink", "Orange", "White", "Match HUD"};
+	public static final String[] MENU_CORNERS = {"Square", "Soft", "Round"};
+	public static final String[] MENU_THEMES = {"Dark", "Black", "Slate"};
+
 	public boolean enabled = true;
 	public int anchor = 0;            // index into ANCHORS
 	public int offsetX = 0;           // pixels from the anchor
@@ -29,6 +33,13 @@ public final class ProfitConfig {
 	public boolean countSales = true;
 	public boolean countPayments = true;
 	public boolean syncWithSidebar = true;
+
+	// menu appearance
+	public int menuAccent = 0;        // index into MENU_ACCENTS
+	public int menuCorners = 1;       // index into MENU_CORNERS
+	public int menuTheme = 0;         // index into MENU_THEMES
+	public boolean menuAnimations = true;
+	public boolean menuDim = true;
 
 	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 	private static ProfitConfig instance;
@@ -70,6 +81,9 @@ public final class ProfitConfig {
 	private void clamp() {
 		anchor = Math.floorMod(anchor, ANCHORS.length);
 		colorMode = Math.floorMod(colorMode, COLOR_MODES.length);
+		menuAccent = Math.floorMod(menuAccent, MENU_ACCENTS.length);
+		menuCorners = Math.floorMod(menuCorners, MENU_CORNERS.length);
+		menuTheme = Math.floorMod(menuTheme, MENU_THEMES.length);
 		scale = Math.max(0.5f, Math.min(2.5f, scale));
 		backgroundOpacity = Math.max(0, Math.min(100, backgroundOpacity));
 		rainbowSpeed = Math.max(0.1f, Math.min(4f, rainbowSpeed));

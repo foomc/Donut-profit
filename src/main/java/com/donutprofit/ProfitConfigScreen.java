@@ -6,7 +6,6 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.Drawable;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.client.gui.widget.ClickableWidget;
 import net.minecraft.client.gui.widget.SliderWidget;
 import net.minecraft.text.Text;
 
@@ -16,23 +15,31 @@ import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 
 /**
- * Settings menu: a custom-drawn tabbed panel with animated switches and sliders.
+ * Settings menu: flat panel, category sidebar on the left, plain controls on the right.
  * The real HUD is drawn on top of the panel, so every change previews live.
+ * Clicks are handled by invisible vanilla widgets; visuals are separate Drawables.
  */
 public class ProfitConfigScreen extends Screen {
-	private static final int PW = 330;
-	private static final int PH = 240;
-	private static final int PAD = 16;
-	private static final int ROW_H = 24;
-	private static final int PITCH = 27;
-	private static final String[] TABS = {"Layout", "Style", "Elements", "Tracking"};
+	private static final int PW = 390;
+	private static final int PH = 214;
+	private static final int SBW = 96;      // sidebar width
+	private static final int ROW_H = 22;
+	private static final int PITCH = 24;
+	private static final int TRACK_W = 96;
+	private static final String[] TABS = {"Layout", "Style", "Elements", "Tracking", "Menu"};
+
+	private static final int[] RADII = {0, 3, 6};
+	private static final int[] ACCENTS = {0xFF4C8DFF, 0xFF4CC38A, 0xFFFF6FA8, 0xFFFFA040, 0xFFE6E6E6};
+	private static final int[] THEME_BG = {0xFF1C1C20, 0xFF0D0D0F, 0xFF1D222C};
+	private static final int[] THEME_SIDEBAR = {0xFF151518, 0xFF08080A, 0xFF161A22};
+	private static final int[] THEME_BORDER = {0xFF35353C, 0xFF27272C, 0xFF353D4D};
+
+	private static final int TEXT = 0xFFD9D9DE;
+	private static final int TEXT_DIM = 0xFF8D8D96;
+	private static final int TEXT_WHITE = 0xFFFFFFFF;
 
 	private static int lastTab = 0;
-
-	// shared animation state (updated once per frame by the panel drawable)
-	private static float FADE = 0f;
-	private static float DT = 0.016f;
-	private static long lastFrame = 0;
+	private static float FADE = 1f;
 	private static long openNanos = 0;
 
 	private final Screen parent;
@@ -43,8 +50,7 @@ public class ProfitConfigScreen extends Screen {
 		super(Text.literal("Donut Profit Settings"));
 		this.parent = parent;
 		openNanos = System.nanoTime();
-		lastFrame = 0;
-		FADE = 0f;
+		FADE = ProfitConfig.get().menuAnimations ? 0f : 1f;
 	}
 
 	// ------------------------------------------------------------------ layout
@@ -57,46 +63,50 @@ public class ProfitConfigScreen extends Screen {
 
 		addDrawable(new PanelDrawable());
 
-		// tabs
-		int gap = 4;
-		int tw = (PW - PAD * 2 - gap * (TABS.length - 1)) / TABS.length;
 		for (int i = 0; i < TABS.length; i++) {
 			final int idx = i;
-			addTab(px + PAD + i * (tw + gap), py + 40, tw, 20, TABS[i], () -> tab == idx, () -> {
+			addTab(px + 1, py + 40 + i * 20, SBW - 1, 20, TABS[i], () -> tab == idx, () -> {
 				tab = idx;
 				lastTab = idx;
 				this.clearAndInit();
 			});
 		}
 
-		int x = px + PAD;
-		int w = PW - PAD * 2;
-		int y = py + 68;
+		int x = px + SBW + 14;
+		int w = PW - SBW - 28;
+		int y = py + 34;
 
 		switch (tab) {
 			case 0 -> {
-				addToggle(x, y, w, ROW_H, "HUD Enabled", () -> c.enabled, v -> c.enabled = v); y += PITCH;
-				addCycle(x, y, w, ROW_H, "Position", ProfitConfig.ANCHORS, () -> c.anchor, v -> c.anchor = v, null); y += PITCH;
-				addSlider(x, y, w, ROW_H, "X Offset", -300, 300, c.offsetX, v -> c.offsetX = (int) Math.round(v), "px"); y += PITCH;
-				addSlider(x, y, w, ROW_H, "Y Offset", 0, 300, c.offsetY, v -> c.offsetY = (int) Math.round(v), "px"); y += PITCH;
-				addSlider(x, y, w, ROW_H, "Size", 50, 250, c.scale * 100.0, v -> c.scale = v.floatValue() / 100f, "%");
+				addToggle(x, y, w, "HUD Enabled", () -> c.enabled, v -> c.enabled = v); y += PITCH;
+				addCycle(x, y, w, "Position", ProfitConfig.ANCHORS, () -> c.anchor, v -> c.anchor = v, null); y += PITCH;
+				addSlider(x, y, w, "X Offset", -300, 300, c.offsetX, v -> c.offsetX = (int) Math.round(v), "px"); y += PITCH;
+				addSlider(x, y, w, "Y Offset", 0, 300, c.offsetY, v -> c.offsetY = (int) Math.round(v), "px"); y += PITCH;
+				addSlider(x, y, w, "Size", 50, 250, c.scale * 100.0, v -> c.scale = v.floatValue() / 100f, "%");
 			}
 			case 1 -> {
-				addCycle(x, y, w, ROW_H, "Colour", ProfitConfig.COLOR_MODES, () -> c.colorMode, v -> c.colorMode = v,
+				addCycle(x, y, w, "Colour", ProfitConfig.COLOR_MODES, () -> c.colorMode, v -> c.colorMode = v,
 						() -> c.colorMode == 0 ? hsb(time(), 0.8f, 1f) : (0xFF000000 | ProfitConfig.COLOR_VALUES[c.colorMode])); y += PITCH;
-				addSlider(x, y, w, ROW_H, "Background", 0, 100, c.backgroundOpacity, v -> c.backgroundOpacity = (int) Math.round(v), "%"); y += PITCH;
-				addSlider(x, y, w, ROW_H, "Animation Speed", 10, 400, c.rainbowSpeed * 100.0, v -> c.rainbowSpeed = v.floatValue() / 100f, "%");
+				addSlider(x, y, w, "Background", 0, 100, c.backgroundOpacity, v -> c.backgroundOpacity = (int) Math.round(v), "%"); y += PITCH;
+				addSlider(x, y, w, "Animation Speed", 10, 400, c.rainbowSpeed * 100.0, v -> c.rainbowSpeed = v.floatValue() / 100f, "%");
 			}
 			case 2 -> {
-				addToggle(x, y, w, ROW_H, "Title", () -> c.showTitle, v -> c.showTitle = v); y += PITCH;
-				addToggle(x, y, w, ROW_H, "Border", () -> c.showBorder, v -> c.showBorder = v); y += PITCH;
-				addToggle(x, y, w, ROW_H, "Accent Bar", () -> c.showAccentBar, v -> c.showAccentBar = v); y += PITCH;
-				addToggle(x, y, w, ROW_H, "Plus Sign", () -> c.showPlusSign, v -> c.showPlusSign = v);
+				addToggle(x, y, w, "Title", () -> c.showTitle, v -> c.showTitle = v); y += PITCH;
+				addToggle(x, y, w, "Border", () -> c.showBorder, v -> c.showBorder = v); y += PITCH;
+				addToggle(x, y, w, "Accent Bar", () -> c.showAccentBar, v -> c.showAccentBar = v); y += PITCH;
+				addToggle(x, y, w, "Plus Sign", () -> c.showPlusSign, v -> c.showPlusSign = v);
+			}
+			case 3 -> {
+				addToggle(x, y, w, "Count Sales", () -> c.countSales, v -> c.countSales = v); y += PITCH;
+				addToggle(x, y, w, "Count Payments", () -> c.countPayments, v -> c.countPayments = v); y += PITCH;
+				addToggle(x, y, w, "Sync With Sidebar", () -> c.syncWithSidebar, v -> c.syncWithSidebar = v);
 			}
 			default -> {
-				addToggle(x, y, w, ROW_H, "Count Sales", () -> c.countSales, v -> c.countSales = v); y += PITCH;
-				addToggle(x, y, w, ROW_H, "Count Payments", () -> c.countPayments, v -> c.countPayments = v); y += PITCH;
-				addToggle(x, y, w, ROW_H, "Sync With Sidebar", () -> c.syncWithSidebar, v -> c.syncWithSidebar = v);
+				addCycle(x, y, w, "Accent", ProfitConfig.MENU_ACCENTS, () -> c.menuAccent, v -> c.menuAccent = v, () -> accentOf(c.menuAccent)); y += PITCH;
+				addCycle(x, y, w, "Corners", ProfitConfig.MENU_CORNERS, () -> c.menuCorners, v -> c.menuCorners = v, null); y += PITCH;
+				addCycle(x, y, w, "Theme", ProfitConfig.MENU_THEMES, () -> c.menuTheme, v -> c.menuTheme = v, null); y += PITCH;
+				addToggle(x, y, w, "Animations", () -> c.menuAnimations, v -> c.menuAnimations = v); y += PITCH;
+				addToggle(x, y, w, "Dim Background", () -> c.menuDim, v -> c.menuDim = v);
 			}
 		}
 
@@ -136,58 +146,46 @@ public class ProfitConfigScreen extends Screen {
 	private final class PanelDrawable implements Drawable {
 		@Override
 		public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
-			long now = System.nanoTime();
-			DT = lastFrame == 0 ? 0.016f : Math.min(0.05f, (now - lastFrame) / 1_000_000_000f);
-			lastFrame = now;
-			float t = Math.min(1f, (now - openNanos) / 1_000_000_000f / 0.22f);
-			FADE = 1f - (1f - t) * (1f - t) * (1f - t);
-
-			ctx.fill(0, 0, width, height, ((int) (0x55 * FADE) << 24));
-
-			ctx.getMatrices().pushMatrix();
-			ctx.getMatrices().translate(0f, (1f - FADE) * 10f);
-
-			// soft shadow
-			for (int i = 7; i >= 1; i--) {
-				rrect(ctx, px - i, py - i, PW + i * 2, PH + i * 2, 8 + i, 0x0C000000);
+			ProfitConfig cfg = ProfitConfig.get();
+			if (cfg.menuAnimations) {
+				float t = Math.min(1f, (System.nanoTime() - openNanos) / 1_000_000_000f / 0.12f);
+				FADE = t;
+			} else {
+				FADE = 1f;
 			}
-			// border (hue breathes) + body
-			rrect(ctx, px, py, PW, PH, 8, hsb(time(), 0.7f, 1f));
-			rrect(ctx, px + 1, py + 1, PW - 2, PH - 2, 7, 0xFF14141E);
-			// flowing highlight along the top edge
-			for (int i = 8; i < PW - 8; i++) {
-				ctx.fill(px + i, py, px + i + 1, py + 1, fa(hsb(time() - i / (float) PW, 0.8f, 1f)));
-			}
+			if (cfg.menuDim) ctx.fill(0, 0, width, height, ((int) (0x60 * FADE) << 24));
+
+			int r = rad();
+			int r1 = Math.max(0, r - 1);
+			int th = cfg.menuTheme;
+			rrect(ctx, px, py, PW, PH, r, THEME_BORDER[th]);
+			rrect(ctx, px + 1, py + 1, PW - 2, PH - 2, r1, THEME_SIDEBAR[th]);
+			rrect(ctx, px + SBW, py + 1, PW - SBW - 1, PH - 2, r1, THEME_BG[th]);
+			ctx.fill(px + SBW, py + 1, px + SBW + r1 + 1, py + PH - 1, fa(THEME_BG[th]));
+			ctx.fill(px + SBW, py + 1, px + SBW + 1, py + PH - 1, fa(THEME_BORDER[th]));
 
 			TextRenderer tr = tr();
-			// title (rainbow, 1.5x)
-			ctx.getMatrices().pushMatrix();
-			ctx.getMatrices().translate(px + PAD, py + 11);
-			ctx.getMatrices().scale(1.5f, 1.5f);
-			int cx = 0;
-			int i = 0;
-			for (char ch : "DONUT PROFIT".toCharArray()) {
-				String s = String.valueOf(ch);
-				ctx.drawText(tr, s, cx, 0, fa(accent(time() * 2f - i * 0.06f)), true);
-				cx += tr.getWidth(s);
-				i++;
-			}
-			ctx.getMatrices().popMatrix();
-			ctx.drawText(tr, "Settings  ·  saved automatically", px + PAD, py + 29, fa(0xFF8A8A9C), false);
+			ctx.drawText(tr, "Donut Profit", px + 12, py + 11, fa(TEXT_WHITE), false);
+			ctx.drawText(tr, "v1.0.0", px + 12, py + 23, fa(TEXT_DIM), false);
+			ctx.drawText(tr, "Right Shift", px + 12, py + PH - 18, fa(TEXT_DIM), false);
 
-			// divider under tabs
-			ctx.fill(px + PAD, py + 63, px + PW - PAD, py + 64, fa(0x22FFFFFF));
+			int cx = px + SBW + 14;
+			int cw = PW - SBW - 28;
+			ctx.drawText(tr, TABS[tab], cx, py + 12, fa(TEXT_WHITE), false);
+			ctx.fill(cx, py + 25, cx + cw, py + 26, fa(THEME_BORDER[th]));
 
 			if (tab == 3) {
-				ctx.drawText(tr, "Sales and payments are read from chat messages about you.", px + PAD, py + 68 + PITCH * 3 + 2, fa(0xFF8A8A9C), false);
-				ctx.drawText(tr, "Sync With Sidebar corrects any drift using your balance.", px + PAD, py + 68 + PITCH * 3 + 14, fa(0xFF8A8A9C), false);
+				int hy = py + 34 + PITCH * 3 + 2;
+				ctx.drawText(tr, "Sales & payments are read from chat messages", cx, hy, fa(TEXT_DIM), false);
+				ctx.drawText(tr, "about you. Sync fixes drift using the sidebar.", cx, hy + 11, fa(TEXT_DIM), false);
 			}
-			ctx.getMatrices().popMatrix();
+			if (tab == 4) {
+				ctx.drawText(tr, "Changes save automatically.", cx, py + 34 + PITCH * 5 + 2, fa(TEXT_DIM), false);
+			}
 		}
 	}
 
 	// ------------------------------------------------------------------ widgets
-	// Clicks are handled by invisible vanilla widgets (alpha 0); the visuals are separate Drawables.
 
 	private ButtonWidget hit(int x, int y, int w, int h, Runnable action) {
 		ButtonWidget b = ButtonWidget.builder(Text.empty(), btn -> action.run()).dimensions(x, y, w, h).build();
@@ -195,32 +193,33 @@ public class ProfitConfigScreen extends Screen {
 		return addDrawableChild(b);
 	}
 
-	private void addToggle(int x, int y, int w, int h, String label, Supplier<Boolean> get, Consumer<Boolean> set) {
-		ButtonWidget b = hit(x, y, w, h, () -> set.accept(!get.get()));
-		addDrawable(new ToggleVisual(b, label, get));
+	private void addToggle(int x, int y, int w, String label, Supplier<Boolean> get, Consumer<Boolean> set) {
+		hit(x, y, w, ROW_H, () -> set.accept(!get.get()));
+		addDrawable(new ToggleVisual(x, y, w, ROW_H, label, get));
 	}
 
-	private void addCycle(int x, int y, int w, int h, String label, String[] options,
-						  Supplier<Integer> get, Consumer<Integer> set, IntSupplier dot) {
-		ButtonWidget b = hit(x, y, w, h, () -> set.accept((get.get() + 1) % options.length));
-		addDrawable(new CycleVisual(b, label, options, get, dot));
+	private void addCycle(int x, int y, int w, String label, String[] options,
+						  Supplier<Integer> get, Consumer<Integer> set, IntSupplier swatch) {
+		hit(x, y, w, ROW_H, () -> set.accept((get.get() + 1) % options.length));
+		addDrawable(new CycleVisual(x, y, w, ROW_H, label, options, get, swatch));
 	}
 
-	private void addSlider(int x, int y, int w, int h, String label, double min, double max,
+	private void addSlider(int x, int y, int w, String label, double min, double max,
 						   double current, Consumer<Double> set, String unit) {
-		SliderRow s = new SliderRow(x, y, w, h, min, max, current, set);
+		int sx = x + w - (TRACK_W + 8) - 4;
+		SliderRow s = new SliderRow(sx, y, TRACK_W + 8, ROW_H, min, max, current, set);
 		addDrawableChild(s);
-		addDrawable(new SliderVisual(s, label, min, max, unit));
+		addDrawable(new SliderVisual(s, x, y, w, ROW_H, label, min, max, unit));
 	}
 
 	private void addTab(int x, int y, int w, int h, String label, Supplier<Boolean> selected, Runnable action) {
-		ButtonWidget b = hit(x, y, w, h, action);
-		addDrawable(new TabVisual(b, label, selected));
+		hit(x, y, w, h, action);
+		addDrawable(new TabVisual(x, y, w, h, label, selected));
 	}
 
 	private void addAction(int x, int y, int w, int h, String label, int style, Runnable action) {
-		ButtonWidget b = hit(x, y, w, h, action);
-		addDrawable(new ActionVisual(b, label, style));
+		hit(x, y, w, h, action);
+		addDrawable(new ActionVisual(x, y, w, h, label, style));
 	}
 
 	private static final class SliderRow extends SliderWidget {
@@ -249,94 +248,93 @@ public class ProfitConfigScreen extends Screen {
 		}
 	}
 
+	private static boolean over(int mx, int my, int x, int y, int w, int h) {
+		return mx >= x && mx < x + w && my >= y && my < y + h;
+	}
+
+	private static void rowHover(DrawContext ctx, int x, int y, int w, int h, boolean hovered) {
+		if (hovered) ctx.fill(x - 4, y, x + w + 4, y + h, fa(0x0FFFFFFF));
+	}
+
+	private record Row(int x, int y, int w, int h) {}
+
 	private static final class ToggleVisual implements Drawable {
-		private final ClickableWidget w;
+		private final Row r;
 		private final String label;
 		private final Supplier<Boolean> get;
-		private float hover = 0f;
-		private float on;
 
-		ToggleVisual(ClickableWidget w, String label, Supplier<Boolean> get) {
-			this.w = w;
+		ToggleVisual(int x, int y, int w, int h, String label, Supplier<Boolean> get) {
+			this.r = new Row(x, y, w, h);
 			this.label = label;
 			this.get = get;
-			this.on = get.get() ? 1f : 0f;
 		}
 
 		@Override
 		public void render(DrawContext ctx, int mx, int my, float delta) {
-			hover = approach(hover, w.isHovered() ? 1f : 0f);
-			on = approach(on, get.get() ? 1f : 0f);
-			ctx.getMatrices().pushMatrix();
-			ctx.getMatrices().translate(0f, (1f - FADE) * 10f);
+			rowHover(ctx, r.x, r.y, r.w, r.h, over(mx, my, r.x, r.y, r.w, r.h));
+			ctx.drawText(tr(), label, r.x, r.y + (r.h - 8) / 2, fa(TEXT), false);
 
-			int x = w.getX(), y = w.getY(), ww = w.getWidth(), h = w.getHeight();
-			rowBg(ctx, x, y, ww, h, hover);
-			ctx.drawText(tr(), label, x + 10, y + (h - 8) / 2, fa(0xFFE8E8F0), false);
-
-			int sw = 32, sh = 14;
-			int sx = x + ww - sw - 10, sy = y + (h - sh) / 2;
-			int track = mix(0xFF3A3A4A, accent(time()), on);
-			rrect(ctx, sx, sy, sw, sh, 7, track);
-			int kx = sx + 2 + Math.round(on * (sw - 14));
-			rrect(ctx, kx, sy + 2, 10, 10, 5, 0xFFFFFFFF);
-
-			ctx.getMatrices().popMatrix();
+			int bs = 12;
+			int bx = r.x + r.w - bs - 2, by = r.y + (r.h - bs) / 2;
+			boolean on = get.get();
+			int accent = menuAccent();
+			ctx.fill(bx, by, bx + bs, by + bs, fa(on ? accent : 0xFF5A5A63));
+			ctx.fill(bx + 1, by + 1, bx + bs - 1, by + bs - 1, fa(on ? accent : themeBg()));
+			if (on) {
+				int[][] tick = {{2, 6}, {3, 7}, {4, 8}, {5, 7}, {6, 6}, {7, 5}, {8, 4}, {9, 3}};
+				for (int[] p : tick) {
+					ctx.fill(bx + p[0], by + p[1] - 1, bx + p[0] + 1, by + p[1] + 1, fa(0xFF101014));
+				}
+			}
 		}
 	}
 
 	private static final class CycleVisual implements Drawable {
-		private final ClickableWidget w;
+		private final Row r;
 		private final String label;
 		private final String[] options;
 		private final Supplier<Integer> get;
-		private final IntSupplier dot;
-		private float hover = 0f;
+		private final IntSupplier swatch;
 
-		CycleVisual(ClickableWidget w, String label, String[] options, Supplier<Integer> get, IntSupplier dot) {
-			this.w = w;
+		CycleVisual(int x, int y, int w, int h, String label, String[] options, Supplier<Integer> get, IntSupplier swatch) {
+			this.r = new Row(x, y, w, h);
 			this.label = label;
 			this.options = options;
 			this.get = get;
-			this.dot = dot;
+			this.swatch = swatch;
 		}
 
 		@Override
 		public void render(DrawContext ctx, int mx, int my, float delta) {
-			hover = approach(hover, w.isHovered() ? 1f : 0f);
-			ctx.getMatrices().pushMatrix();
-			ctx.getMatrices().translate(0f, (1f - FADE) * 10f);
-
-			int x = w.getX(), y = w.getY(), ww = w.getWidth(), h = w.getHeight();
+			boolean hov = over(mx, my, r.x, r.y, r.w, r.h);
+			rowHover(ctx, r.x, r.y, r.w, r.h, hov);
 			TextRenderer tr = tr();
-			rowBg(ctx, x, y, ww, h, hover);
-			ctx.drawText(tr, label, x + 10, y + (h - 8) / 2, fa(0xFFE8E8F0), false);
+			int ty = r.y + (r.h - 8) / 2;
+			ctx.drawText(tr, label, r.x, ty, fa(TEXT), false);
 
 			String v = options[get.get()];
-			int chipW = tr.getWidth(v) + 28 + (dot != null ? 12 : 0);
-			int chipH = 16;
-			int cx = x + ww - chipW - 8, cy = y + (h - chipH) / 2;
-			rrect(ctx, cx, cy, chipW, chipH, 8, ((int) (0x30 + hover * 0x20) << 24) | 0xFFFFFF);
-			int tx = cx + 8;
-			if (dot != null) {
-				rrect(ctx, tx, cy + 4, 8, 8, 4, dot.getAsInt());
-				tx += 12;
+			int right = r.x + r.w - 2;
+			int arrow = hov ? TEXT_WHITE : TEXT_DIM;
+			ctx.drawText(tr, ">", right - 5, ty, fa(arrow), false);
+			int vx = right - 5 - 6 - tr.getWidth(v);
+			ctx.drawText(tr, v, vx, ty, fa(TEXT_WHITE), false);
+			ctx.drawText(tr, "<", vx - 11, ty, fa(arrow), false);
+			if (swatch != null) {
+				ctx.fill(vx - 24, ty, vx - 15, ty + 9, fa(0xFF000000));
+				ctx.fill(vx - 23, ty + 1, vx - 16, ty + 8, fa(swatch.getAsInt()));
 			}
-			ctx.drawText(tr, v, tx, cy + 4, fa(0xFFFFFFFF), false);
-			ctx.drawText(tr, "\u203a", cx + chipW - 11, cy + 4, fa(0xFFB0B0C0), false);
-
-			ctx.getMatrices().popMatrix();
 		}
 	}
 
 	private static final class SliderVisual implements Drawable {
 		private final SliderRow w;
+		private final Row r;
 		private final String label, unit;
 		private final double min, max;
-		private float hover = 0f;
 
-		SliderVisual(SliderRow w, String label, double min, double max, String unit) {
+		SliderVisual(SliderRow w, int x, int y, int rw, int h, String label, double min, double max, String unit) {
 			this.w = w;
+			this.r = new Row(x, y, rw, h);
 			this.label = label;
 			this.min = min;
 			this.max = max;
@@ -345,109 +343,86 @@ public class ProfitConfigScreen extends Screen {
 
 		@Override
 		public void render(DrawContext ctx, int mx, int my, float delta) {
-			hover = approach(hover, (w.isHovered() || w.isFocused()) ? 1f : 0f);
-			ctx.getMatrices().pushMatrix();
-			ctx.getMatrices().translate(0f, (1f - FADE) * 10f);
-
-			int x = w.getX(), y = w.getY(), ww = w.getWidth(), h = w.getHeight();
-			double value = w.val();
+			boolean hov = over(mx, my, r.x, r.y, r.w, r.h) || w.isFocused();
+			rowHover(ctx, r.x, r.y, r.w, r.h, hov);
 			TextRenderer tr = tr();
-			rowBg(ctx, x, y, ww, h, hover);
-			ctx.drawText(tr, label, x + 10, y + 4, fa(0xFFE8E8F0), false);
+			int ty = r.y + (r.h - 8) / 2;
+			ctx.drawText(tr, label, r.x, ty, fa(TEXT), false);
+
+			double value = w.val();
 			String v = Math.round(min + value * (max - min)) + unit;
-			ctx.drawText(tr, v, x + ww - 10 - tr.getWidth(v), y + 4, fa(0xFFFFFFFF), false);
+			ctx.drawText(tr, v, w.getX() - 4 - tr.getWidth(v), ty, fa(TEXT_WHITE), false);
 
-			int tx = x + 4, tw = ww - 8, ty = y + h - 7;
-			rrect(ctx, tx, ty, tw, 3, 1, 0x40FFFFFF);
+			int tx = w.getX() + 4;
+			int tw = w.getWidth() - 8;
+			int cy = r.y + r.h / 2;
+			ctx.fill(tx, cy - 1, tx + tw, cy + 1, fa(0xFF3C3C45));
 			int fillW = (int) (tw * value);
-			for (int i = 0; i < fillW; i++) {
-				ctx.fill(tx + i, ty, tx + i + 1, ty + 3, fa(accent(time() - i / (float) tw * 0.6f)));
-			}
-			int kr = Math.round(5f + hover * 1.5f);
-			rrect(ctx, tx + fillW - kr, ty + 1 - kr, kr * 2, kr * 2, kr, 0xFFFFFFFF);
-
-			ctx.getMatrices().popMatrix();
+			ctx.fill(tx, cy - 1, tx + fillW, cy + 1, fa(menuAccent()));
+			ctx.fill(tx + fillW - 2, cy - 5, tx + fillW + 2, cy + 5, fa(hov ? TEXT_WHITE : 0xFFC8C8CE));
 		}
 	}
 
 	private static final class TabVisual implements Drawable {
-		private final ClickableWidget w;
+		private final Row r;
 		private final String label;
 		private final Supplier<Boolean> selected;
-		private float hover = 0f;
-		private float sel;
 
-		TabVisual(ClickableWidget w, String label, Supplier<Boolean> selected) {
-			this.w = w;
+		TabVisual(int x, int y, int w, int h, String label, Supplier<Boolean> selected) {
+			this.r = new Row(x, y, w, h);
 			this.label = label;
 			this.selected = selected;
-			this.sel = selected.get() ? 1f : 0f;
 		}
 
 		@Override
 		public void render(DrawContext ctx, int mx, int my, float delta) {
-			hover = approach(hover, w.isHovered() ? 1f : 0f);
-			sel = approach(sel, selected.get() ? 1f : 0f);
-			ctx.getMatrices().pushMatrix();
-			ctx.getMatrices().translate(0f, (1f - FADE) * 10f);
-
-			int x = w.getX(), y = w.getY(), ww = w.getWidth(), h = w.getHeight();
-			TextRenderer tr = tr();
-			if (hover > 0.01f || sel > 0.01f) {
-				rrect(ctx, x, y, ww, h, 6, ((int) (hover * 0x14 + sel * 0x18) << 24) | 0xFFFFFF);
+			boolean sel = selected.get();
+			boolean hov = over(mx, my, r.x, r.y, r.w, r.h);
+			if (sel) {
+				ctx.fill(r.x, r.y, r.x + r.w, r.y + r.h, fa(0x14FFFFFF));
+				ctx.fill(r.x, r.y, r.x + 2, r.y + r.h, fa(menuAccent()));
+			} else if (hov) {
+				ctx.fill(r.x, r.y, r.x + r.w, r.y + r.h, fa(0x0AFFFFFF));
 			}
-			int col = mix(0xFF8A8A9C, 0xFFFFFFFF, Math.max(sel, hover * 0.7f));
-			ctx.drawText(tr, label, x + (ww - tr.getWidth(label)) / 2, y + (h - 8) / 2, fa(col), false);
-
-			int lw = Math.round((ww - 14) * sel);
-			for (int i = 0; i < lw; i++) {
-				ctx.fill(x + (ww - lw) / 2 + i, y + h - 2, x + (ww - lw) / 2 + i + 1, y + h, fa(accent(time() - i / (float) ww)));
-			}
-
-			ctx.getMatrices().popMatrix();
+			ctx.drawText(tr(), label, r.x + 12, r.y + (r.h - 8) / 2, fa(sel ? TEXT_WHITE : (hov ? TEXT : TEXT_DIM)), false);
 		}
 	}
 
-	/** style: 0 = normal, 1 = primary (accent filled), 2 = danger. */
+	/** style: 0 = normal, 1 = primary (accent), 2 = danger. */
 	private static final class ActionVisual implements Drawable {
-		private final ClickableWidget w;
+		private final Row r;
 		private final String label;
 		private final int style;
-		private float hover = 0f;
 
-		ActionVisual(ClickableWidget w, String label, int style) {
-			this.w = w;
+		ActionVisual(int x, int y, int w, int h, String label, int style) {
+			this.r = new Row(x, y, w, h);
 			this.label = label;
 			this.style = style;
 		}
 
 		@Override
 		public void render(DrawContext ctx, int mx, int my, float delta) {
-			hover = approach(hover, w.isHovered() ? 1f : 0f);
-			ctx.getMatrices().pushMatrix();
-			ctx.getMatrices().translate(0f, (1f - FADE) * 10f);
-
-			int x = w.getX(), y = w.getY(), ww = w.getWidth(), h = w.getHeight();
-			TextRenderer tr = tr();
-			int textCol = 0xFFFFFFFF;
+			boolean hov = over(mx, my, r.x, r.y, r.w, r.h);
+			int rad = Math.min(rad(), 3);
+			int border, bg, text;
 			if (style == 1) {
-				for (int i = 0; i < ww; i++) {
-					int inset = 0;
-					if (i < 5) inset = 5 - i;
-					else if (i >= ww - 5) inset = i - (ww - 6);
-					int col = mix(accent(time() - i / (float) ww * 0.6f), 0xFFFFFFFF, hover * 0.25f);
-					ctx.fill(x + i, y + Math.min(inset, 3), x + i + 1, y + h - Math.min(inset, 3), fa(col));
-				}
-				textCol = 0xFF101018;
+				int a = menuAccent();
+				border = a;
+				bg = hov ? mix(a, 0xFFFFFFFF, 0.15f) : a;
+				text = 0xFF101014;
 			} else if (style == 2) {
-				rrect(ctx, x, y, ww, h, 5, mix(0x30FF5555, 0x66FF5555, hover));
-				textCol = mix(0xFFFF9090, 0xFFFFFFFF, hover);
+				border = hov ? 0xFFB5504F : 0xFF6E3C3C;
+				bg = hov ? 0xFF3A2424 : 0xFF2A1E1E;
+				text = 0xFFE59A98;
 			} else {
-				rrect(ctx, x, y, ww, h, 5, ((int) (0x28 + hover * 0x26) << 24) | 0xFFFFFF);
+				border = hov ? 0xFF5A5A63 : 0xFF3F3F47;
+				bg = hov ? 0xFF2E2E34 : 0xFF25252A;
+				text = TEXT_WHITE;
 			}
-			ctx.drawText(tr, label, x + (ww - tr.getWidth(label)) / 2, y + (h - 8) / 2, fa(textCol), false);
-
-			ctx.getMatrices().popMatrix();
+			rrect(ctx, r.x, r.y, r.w, r.h, rad, border);
+			rrect(ctx, r.x + 1, r.y + 1, r.w - 2, r.h - 2, Math.max(0, rad - 1), bg);
+			TextRenderer tr = tr();
+			ctx.drawText(tr, label, r.x + (r.w - tr.getWidth(label)) / 2, r.y + (r.h - 8) / 2, fa(text), false);
 		}
 	}
 
@@ -461,11 +436,27 @@ public class ProfitConfigScreen extends Screen {
 		return (System.currentTimeMillis() % 5000L) / 5000f;
 	}
 
-	private static float approach(float cur, float target) {
-		return cur + (target - cur) * (1f - (float) Math.exp(-DT * 16f));
+	private static int rad() {
+		return RADII[ProfitConfig.get().menuCorners];
 	}
 
-	/** Multiplies a colour's alpha by the screen fade-in. */
+	private static int themeBg() {
+		return THEME_BG[ProfitConfig.get().menuTheme];
+	}
+
+	private static int menuAccent() {
+		return accentOf(ProfitConfig.get().menuAccent);
+	}
+
+	/** Menu accent by index; the last option follows the HUD colour setting. */
+	private static int accentOf(int idx) {
+		if (idx < ACCENTS.length) return ACCENTS[idx];
+		ProfitConfig c = ProfitConfig.get();
+		if (c.colorMode == 0) return hsb(time(), 0.7f, 1f);
+		return 0xFF000000 | ProfitConfig.COLOR_VALUES[c.colorMode];
+	}
+
+	/** Multiplies a colour's alpha by the fade-in. */
 	private static int fa(int argb) {
 		int a = Math.round(((argb >>> 24) & 0xFF) * FADE);
 		return (a << 24) | (argb & 0xFFFFFF);
@@ -473,13 +464,6 @@ public class ProfitConfigScreen extends Screen {
 
 	private static int hsb(float h, float s, float b) {
 		return 0xFF000000 | Color.HSBtoRGB(((h % 1f) + 1f) % 1f, s, b);
-	}
-
-	/** UI accent: follows the HUD colour setting (rainbow or the chosen flat colour). */
-	private static int accent(float phase) {
-		ProfitConfig c = ProfitConfig.get();
-		if (c.colorMode == 0) return hsb(phase, 0.75f, 1f);
-		return 0xFF000000 | ProfitConfig.COLOR_VALUES[c.colorMode];
 	}
 
 	private static int mix(int a, int b, float t) {
@@ -491,11 +475,7 @@ public class ProfitConfigScreen extends Screen {
 		return (aa << 24) | (ar << 16) | (ag << 8) | ab;
 	}
 
-	private static void rowBg(DrawContext ctx, int x, int y, int w, int h, float hover) {
-		rrect(ctx, x, y, w, h, 5, ((int) (0x1A + hover * 0x16) << 24) | 0xFFFFFF);
-	}
-
-	/** Anti-aliased-looking rounded rectangle (true circular corners). */
+	/** Rectangle with circular corners (r = 0 gives a plain rectangle). */
 	private static void rrect(DrawContext ctx, int x, int y, int w, int h, int r, int color) {
 		r = Math.max(0, Math.min(r, Math.min(w, h) / 2));
 		int col = fa(color);

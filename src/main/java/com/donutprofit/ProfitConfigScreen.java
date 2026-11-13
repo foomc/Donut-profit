@@ -8,8 +8,10 @@ import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.SliderWidget;
 import net.minecraft.text.Text;
+import net.minecraft.util.Util;
 
 import java.awt.Color;
+import java.net.URI;
 import java.util.function.Consumer;
 import java.util.function.IntSupplier;
 import java.util.function.Supplier;
@@ -20,13 +22,16 @@ import java.util.function.Supplier;
  * Clicks are handled by invisible vanilla widgets; visuals are separate Drawables.
  */
 public class ProfitConfigScreen extends Screen {
-	private static final int PW = 390;
+	public static final String MOD_NAME = "foomc's Profit Mod";
+	public static final String YOUTUBE_URL = "https://www.youtube.com/@FooMc2/videos";
+
+	private static final int PW = 410;
 	private static final int PH = 214;
-	private static final int SBW = 96;      // sidebar width
+	private static final int SBW = 116;     // sidebar width
 	private static final int ROW_H = 22;
 	private static final int PITCH = 24;
 	private static final int TRACK_W = 96;
-	private static final String[] TABS = {"Layout", "Style", "Elements", "Tracking", "Menu"};
+	private static final String[] TABS = {"Layout", "Style", "Elements", "Tracking", "Appearance", "Behaviour"};
 
 	private static final int[] RADII = {0, 3, 6};
 	private static final int[] ACCENTS = {0xFF4C8DFF, 0xFF4CC38A, 0xFFFF6FA8, 0xFFFFA040, 0xFFE6E6E6};
@@ -47,7 +52,7 @@ public class ProfitConfigScreen extends Screen {
 	private int px, py;
 
 	public ProfitConfigScreen(Screen parent) {
-		super(Text.literal("Donut Profit Settings"));
+		super(Text.literal(MOD_NAME + " Settings"));
 		this.parent = parent;
 		openNanos = System.nanoTime();
 		FADE = ProfitConfig.get().menuAnimations ? 0f : 1f;
@@ -71,6 +76,9 @@ public class ProfitConfigScreen extends Screen {
 				this.clearAndInit();
 			});
 		}
+
+		// YouTube link
+		addLink(px + 1, py + PH - 44, SBW - 1, 20, "YouTube", YOUTUBE_URL);
 
 		int x = px + SBW + 14;
 		int w = PW - SBW - 28;
@@ -101,12 +109,19 @@ public class ProfitConfigScreen extends Screen {
 				addToggle(x, y, w, "Count Payments", () -> c.countPayments, v -> c.countPayments = v); y += PITCH;
 				addToggle(x, y, w, "Sync With Sidebar", () -> c.syncWithSidebar, v -> c.syncWithSidebar = v);
 			}
-			default -> {
+			case 4 -> {
 				addCycle(x, y, w, "Accent", ProfitConfig.MENU_ACCENTS, () -> c.menuAccent, v -> c.menuAccent = v, () -> accentOf(c.menuAccent)); y += PITCH;
+				addSlider(x, y, w, "Custom Hue", 0, 360, c.menuHue, v -> c.menuHue = (int) Math.round(v), "°"); y += PITCH;
 				addCycle(x, y, w, "Corners", ProfitConfig.MENU_CORNERS, () -> c.menuCorners, v -> c.menuCorners = v, null); y += PITCH;
 				addCycle(x, y, w, "Theme", ProfitConfig.MENU_THEMES, () -> c.menuTheme, v -> c.menuTheme = v, null); y += PITCH;
+				addSlider(x, y, w, "Panel Opacity", 40, 100, c.menuOpacity, v -> c.menuOpacity = (int) Math.round(v), "%");
+			}
+			default -> {
 				addToggle(x, y, w, "Animations", () -> c.menuAnimations, v -> c.menuAnimations = v); y += PITCH;
-				addToggle(x, y, w, "Dim Background", () -> c.menuDim, v -> c.menuDim = v);
+				addToggle(x, y, w, "Dim Background", () -> c.menuDim, v -> c.menuDim = v); y += PITCH;
+				addToggle(x, y, w, "HUD Preview", () -> c.menuPreview, v -> c.menuPreview = v); y += PITCH;
+				addToggle(x, y, w, "Text Shadow", () -> c.menuShadow, v -> c.menuShadow = v); y += PITCH;
+				addToggle(x, y, w, "Row Highlight", () -> c.menuHighlight, v -> c.menuHighlight = v);
 			}
 		}
 
@@ -122,7 +137,9 @@ public class ProfitConfigScreen extends Screen {
 		addAction(x + (fw + fg) * 2, fy, fw, 20, "Done", 1, this::close);
 
 		// live HUD preview, drawn last so it sits on top of the panel
-		addDrawable((ctx, mx, my, d) -> ProfitHud.draw(ctx, 0.5f));
+		addDrawable((ctx, mx, my, d) -> {
+			if (ProfitConfig.get().menuPreview) ProfitHud.draw(ctx, 0.5f);
+		});
 	}
 
 	@Override
@@ -158,29 +175,29 @@ public class ProfitConfigScreen extends Screen {
 			int r = rad();
 			int r1 = Math.max(0, r - 1);
 			int th = cfg.menuTheme;
-			rrect(ctx, px, py, PW, PH, r, THEME_BORDER[th]);
-			rrect(ctx, px + 1, py + 1, PW - 2, PH - 2, r1, THEME_SIDEBAR[th]);
-			rrect(ctx, px + SBW, py + 1, PW - SBW - 1, PH - 2, r1, THEME_BG[th]);
-			ctx.fill(px + SBW, py + 1, px + SBW + r1 + 1, py + PH - 1, fa(THEME_BG[th]));
-			ctx.fill(px + SBW, py + 1, px + SBW + 1, py + PH - 1, fa(THEME_BORDER[th]));
+			int border = THEME_BORDER[th];
+			ring(ctx, px, py, PW, PH, r, border);
+			rrectSides(ctx, px + 1, py + 1, SBW - 1, PH - 2, r1, withOpacity(THEME_SIDEBAR[th]), true, false);
+			ctx.fill(px + SBW, py + 1, px + SBW + 1, py + PH - 1, fa(border));
+			rrectSides(ctx, px + SBW + 1, py + 1, PW - SBW - 2, PH - 2, r1, withOpacity(THEME_BG[th]), false, true);
 
 			TextRenderer tr = tr();
-			ctx.drawText(tr, "Donut Profit", px + 12, py + 11, fa(TEXT_WHITE), false);
-			ctx.drawText(tr, "v1.0.0", px + 12, py + 23, fa(TEXT_DIM), false);
-			ctx.drawText(tr, "Right Shift", px + 12, py + PH - 18, fa(TEXT_DIM), false);
+			txt(ctx, tr, MOD_NAME, px + 12, py + 11, TEXT_WHITE);
+			txt(ctx, tr, "v1.0.0", px + 12, py + 23, TEXT_DIM);
+			txt(ctx, tr, "Right Shift", px + 12, py + PH - 18, TEXT_DIM);
 
 			int cx = px + SBW + 14;
 			int cw = PW - SBW - 28;
-			ctx.drawText(tr, TABS[tab], cx, py + 12, fa(TEXT_WHITE), false);
-			ctx.fill(cx, py + 25, cx + cw, py + 26, fa(THEME_BORDER[th]));
+			txt(ctx, tr, TABS[tab], cx, py + 12, TEXT_WHITE);
+			ctx.fill(cx, py + 25, cx + cw, py + 26, fa(border));
 
 			if (tab == 3) {
 				int hy = py + 34 + PITCH * 3 + 2;
-				ctx.drawText(tr, "Sales & payments are read from chat messages", cx, hy, fa(TEXT_DIM), false);
-				ctx.drawText(tr, "about you. Sync fixes drift using the sidebar.", cx, hy + 11, fa(TEXT_DIM), false);
+				txt(ctx, tr, "Sales & payments are read from chat messages", cx, hy, TEXT_DIM);
+				txt(ctx, tr, "about you. Sync fixes drift using the sidebar.", cx, hy + 11, TEXT_DIM);
 			}
-			if (tab == 4) {
-				ctx.drawText(tr, "Changes save automatically.", cx, py + 34 + PITCH * 5 + 2, fa(TEXT_DIM), false);
+			if (tab >= 4) {
+				txt(ctx, tr, "Changes save automatically.", cx, py + 34 + PITCH * 5 + 2, TEXT_DIM);
 			}
 		}
 	}
@@ -215,6 +232,16 @@ public class ProfitConfigScreen extends Screen {
 	private void addTab(int x, int y, int w, int h, String label, Supplier<Boolean> selected, Runnable action) {
 		hit(x, y, w, h, action);
 		addDrawable(new TabVisual(x, y, w, h, label, selected));
+	}
+
+	private void addLink(int x, int y, int w, int h, String label, String url) {
+		hit(x, y, w, h, () -> {
+			try {
+				Util.getOperatingSystem().open(URI.create(url));
+			} catch (Exception ignored) {
+			}
+		});
+		addDrawable(new LinkVisual(x, y, w, h, label));
 	}
 
 	private void addAction(int x, int y, int w, int h, String label, int style, Runnable action) {
@@ -253,7 +280,7 @@ public class ProfitConfigScreen extends Screen {
 	}
 
 	private static void rowHover(DrawContext ctx, int x, int y, int w, int h, boolean hovered) {
-		if (hovered) ctx.fill(x - 4, y, x + w + 4, y + h, fa(0x0FFFFFFF));
+		if (hovered && ProfitConfig.get().menuHighlight) ctx.fill(x - 4, y, x + w + 4, y + h, fa(0x0FFFFFFF));
 	}
 
 	private record Row(int x, int y, int w, int h) {}
@@ -272,7 +299,7 @@ public class ProfitConfigScreen extends Screen {
 		@Override
 		public void render(DrawContext ctx, int mx, int my, float delta) {
 			rowHover(ctx, r.x, r.y, r.w, r.h, over(mx, my, r.x, r.y, r.w, r.h));
-			ctx.drawText(tr(), label, r.x, r.y + (r.h - 8) / 2, fa(TEXT), false);
+			txt(ctx, tr(), label, r.x, r.y + (r.h - 8) / 2, TEXT);
 
 			int bs = 12;
 			int bx = r.x + r.w - bs - 2, by = r.y + (r.h - bs) / 2;
@@ -310,15 +337,15 @@ public class ProfitConfigScreen extends Screen {
 			rowHover(ctx, r.x, r.y, r.w, r.h, hov);
 			TextRenderer tr = tr();
 			int ty = r.y + (r.h - 8) / 2;
-			ctx.drawText(tr, label, r.x, ty, fa(TEXT), false);
+			txt(ctx, tr, label, r.x, ty, TEXT);
 
 			String v = options[get.get()];
 			int right = r.x + r.w - 2;
 			int arrow = hov ? TEXT_WHITE : TEXT_DIM;
-			ctx.drawText(tr, ">", right - 5, ty, fa(arrow), false);
+			txt(ctx, tr, ">", right - 5, ty, arrow);
 			int vx = right - 5 - 6 - tr.getWidth(v);
-			ctx.drawText(tr, v, vx, ty, fa(TEXT_WHITE), false);
-			ctx.drawText(tr, "<", vx - 11, ty, fa(arrow), false);
+			txt(ctx, tr, v, vx, ty, TEXT_WHITE);
+			txt(ctx, tr, "<", vx - 11, ty, arrow);
 			if (swatch != null) {
 				ctx.fill(vx - 24, ty, vx - 15, ty + 9, fa(0xFF000000));
 				ctx.fill(vx - 23, ty + 1, vx - 16, ty + 8, fa(swatch.getAsInt()));
@@ -347,11 +374,11 @@ public class ProfitConfigScreen extends Screen {
 			rowHover(ctx, r.x, r.y, r.w, r.h, hov);
 			TextRenderer tr = tr();
 			int ty = r.y + (r.h - 8) / 2;
-			ctx.drawText(tr, label, r.x, ty, fa(TEXT), false);
+			txt(ctx, tr, label, r.x, ty, TEXT);
 
 			double value = w.val();
 			String v = Math.round(min + value * (max - min)) + unit;
-			ctx.drawText(tr, v, w.getX() - 4 - tr.getWidth(v), ty, fa(TEXT_WHITE), false);
+			txt(ctx, tr, v, w.getX() - 4 - tr.getWidth(v), ty, TEXT_WHITE);
 
 			int tx = w.getX() + 4;
 			int tw = w.getWidth() - 8;
@@ -384,7 +411,31 @@ public class ProfitConfigScreen extends Screen {
 			} else if (hov) {
 				ctx.fill(r.x, r.y, r.x + r.w, r.y + r.h, fa(0x0AFFFFFF));
 			}
-			ctx.drawText(tr(), label, r.x + 12, r.y + (r.h - 8) / 2, fa(sel ? TEXT_WHITE : (hov ? TEXT : TEXT_DIM)), false);
+			txt(ctx, tr(), label, r.x + 12, r.y + (r.h - 8) / 2, sel ? TEXT_WHITE : (hov ? TEXT : TEXT_DIM));
+		}
+	}
+
+	/** Sidebar link with a small YouTube-style badge. */
+	private static final class LinkVisual implements Drawable {
+		private final Row r;
+		private final String label;
+
+		LinkVisual(int x, int y, int w, int h, String label) {
+			this.r = new Row(x, y, w, h);
+			this.label = label;
+		}
+
+		@Override
+		public void render(DrawContext ctx, int mx, int my, float delta) {
+			boolean hov = over(mx, my, r.x, r.y, r.w, r.h);
+			if (hov) ctx.fill(r.x, r.y, r.x + r.w, r.y + r.h, fa(0x0AFFFFFF));
+			int bx = r.x + 12, by = r.y + (r.h - 9) / 2;
+			ctx.fill(bx, by + 1, bx + 13, by + 8, fa(0xFFE02B20));
+			ctx.fill(bx + 1, by, bx + 12, by + 9, fa(0xFFE02B20));
+			ctx.fill(bx + 5, by + 2, bx + 6, by + 7, fa(0xFFFFFFFF));
+			ctx.fill(bx + 6, by + 3, bx + 7, by + 6, fa(0xFFFFFFFF));
+			ctx.fill(bx + 7, by + 4, bx + 8, by + 5, fa(0xFFFFFFFF));
+			txt(ctx, tr(), label, bx + 19, r.y + (r.h - 8) / 2, hov ? TEXT_WHITE : TEXT_DIM);
 		}
 	}
 
@@ -422,7 +473,7 @@ public class ProfitConfigScreen extends Screen {
 			rrect(ctx, r.x, r.y, r.w, r.h, rad, border);
 			rrect(ctx, r.x + 1, r.y + 1, r.w - 2, r.h - 2, Math.max(0, rad - 1), bg);
 			TextRenderer tr = tr();
-			ctx.drawText(tr, label, r.x + (r.w - tr.getWidth(label)) / 2, r.y + (r.h - 8) / 2, fa(text), false);
+			txt(ctx, tr, label, r.x + (r.w - tr.getWidth(label)) / 2, r.y + (r.h - 8) / 2, text);
 		}
 	}
 
@@ -430,6 +481,10 @@ public class ProfitConfigScreen extends Screen {
 
 	private static TextRenderer tr() {
 		return MinecraftClient.getInstance().textRenderer;
+	}
+
+	private static void txt(DrawContext ctx, TextRenderer tr, String s, int x, int y, int color) {
+		ctx.drawText(tr, s, x, y, fa(color), ProfitConfig.get().menuShadow);
 	}
 
 	private static float time() {
@@ -448,12 +503,19 @@ public class ProfitConfigScreen extends Screen {
 		return accentOf(ProfitConfig.get().menuAccent);
 	}
 
-	/** Menu accent by index; the last option follows the HUD colour setting. */
+	/** 0-4 presets, 5 = custom hue, 6 = follow the HUD colour setting. */
 	private static int accentOf(int idx) {
-		if (idx < ACCENTS.length) return ACCENTS[idx];
 		ProfitConfig c = ProfitConfig.get();
+		if (idx < ACCENTS.length) return ACCENTS[idx];
+		if (idx == ACCENTS.length) return hsb(c.menuHue / 360f, 0.65f, 1f);
 		if (c.colorMode == 0) return hsb(time(), 0.7f, 1f);
 		return 0xFF000000 | ProfitConfig.COLOR_VALUES[c.colorMode];
+	}
+
+	/** Applies the panel opacity setting to a colour. */
+	private static int withOpacity(int argb) {
+		int a = Math.round(255 * ProfitConfig.get().menuOpacity / 100f);
+		return (a << 24) | (argb & 0xFFFFFF);
 	}
 
 	/** Multiplies a colour's alpha by the fade-in. */
@@ -475,20 +537,43 @@ public class ProfitConfigScreen extends Screen {
 		return (aa << 24) | (ar << 16) | (ag << 8) | ab;
 	}
 
-	/** Rectangle with circular corners (r = 0 gives a plain rectangle). */
-	private static void rrect(DrawContext ctx, int x, int y, int w, int h, int r, int color) {
+	private static int insetAt(int k, int h, int r) {
+		if (r <= 0) return 0;
+		double dy;
+		if (k < r) dy = r - k - 0.5;
+		else if (k >= h - r) dy = k + 0.5 - (h - r);
+		else return 0;
+		return (int) Math.round(r - Math.sqrt(Math.max(0, r * r - dy * dy)));
+	}
+
+	/** Filled rectangle; each side can be rounded or square, so adjacent panels never overlap. */
+	private static void rrectSides(DrawContext ctx, int x, int y, int w, int h, int r, int color, boolean left, boolean right) {
 		r = Math.max(0, Math.min(r, Math.min(w, h) / 2));
 		int col = fa(color);
 		for (int k = 0; k < h; k++) {
-			int inset = 0;
-			if (k < r) {
-				double dy = r - k - 0.5;
-				inset = (int) Math.round(r - Math.sqrt(Math.max(0, r * r - dy * dy)));
-			} else if (k >= h - r) {
-				double dy = k + 0.5 - (h - r);
-				inset = (int) Math.round(r - Math.sqrt(Math.max(0, r * r - dy * dy)));
+			int inset = insetAt(k, h, r);
+			ctx.fill(x + (left ? inset : 0), y + k, x + w - (right ? inset : 0), y + k + 1, col);
+		}
+	}
+
+	private static void rrect(DrawContext ctx, int x, int y, int w, int h, int r, int color) {
+		rrectSides(ctx, x, y, w, h, r, color, true, true);
+	}
+
+	/** 1px outline with rounded corners. */
+	private static void ring(DrawContext ctx, int x, int y, int w, int h, int r, int color) {
+		r = Math.max(0, Math.min(r, Math.min(w, h) / 2));
+		int col = fa(color);
+		for (int k = 0; k < h; k++) {
+			int ins = insetAt(k, h, r);
+			if (k == 0 || k == h - 1) {
+				ctx.fill(x + ins, y + k, x + w - ins, y + k + 1, col);
+				continue;
 			}
-			ctx.fill(x + inset, y + k, x + w - inset, y + k + 1, col);
+			int ref = k < h / 2 ? insetAt(k - 1, h, r) : insetAt(k + 1, h, r);
+			int run = Math.max(ins + 1, ref);
+			ctx.fill(x + ins, y + k, x + run, y + k + 1, col);
+			ctx.fill(x + w - run, y + k, x + w - ins, y + k + 1, col);
 		}
 	}
 }

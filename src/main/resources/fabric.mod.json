@@ -2,9 +2,12 @@
   "schemaVersion": 1,
   "id": "donutprofit",
   "version": "${version}",
-  "name": "Donut Profit",
-  "description": "Rainbow 'Profit of the Day' HUD that tracks how much money you've made this session.",
-  "authors": ["You"],
+  "name": "foomc's Profit Mod",
+  "description": "Rainbow 'Profit of the Day' HUD that tracks how much money you've made this session. By foomc.",
+  "authors": ["foomc"],
+  "contact": {
+    "homepage": "https://www.youtube.com/@FooMc2/videos"
+  },
   "license": "MIT",
   "environment": "client",
   "entrypoints": {

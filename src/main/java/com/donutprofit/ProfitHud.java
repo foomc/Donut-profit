@@ -33,14 +33,21 @@ public final class ProfitHud {
 		return 0xFF000000 | (r << 16) | (g << 8) | b;
 	}
 
+	/** HUD layer callback. The settings screen draws its own copy on top of its panel. */
 	public static void render(DrawContext ctx, RenderTickCounter tick) {
+		MinecraftClient mc = MinecraftClient.getInstance();
+		if (mc.options.hudHidden || mc.player == null) return;
+		if (mc.currentScreen instanceof ProfitConfigScreen) return;
+		draw(ctx, tick.getDynamicDeltaTicks());
+	}
+
+	public static void draw(DrawContext ctx, float dt) {
 		ProfitConfig cfg = ProfitConfig.get();
 		MinecraftClient mc = MinecraftClient.getInstance();
-		if (!cfg.enabled || mc.options.hudHidden || mc.player == null) return;
+		if (!cfg.enabled || mc.player == null) return;
 
 		TextRenderer tr = mc.textRenderer;
 		double target = ProfitTracker.profit();
-		float dt = tick.getDynamicDeltaTicks();
 		displayed += (target - displayed) * (1.0 - Math.pow(0.82, dt));
 		if (Math.abs(target - displayed) < 0.5) displayed = target;
 

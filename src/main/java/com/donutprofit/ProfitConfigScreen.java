@@ -127,12 +127,6 @@ public class ProfitConfigScreen extends Screen {
 			protected void applyValue() {
 				set.accept(actual());
 			}
-
-			@Override
-			public void onRelease(double mouseX, double mouseY) {
-				super.onRelease(mouseX, mouseY);
-				ProfitConfig.save();
-			}
 		};
 	}
 }

@@ -74,25 +74,42 @@ public final class ProfitTracker {
 			// rounding error, chat missed something, so trust the sidebar.
 			double board = current - baseline;
 			double tolerance = res + baselineRes;
-			if (Math.abs(board - chatProfit) > tolerance) chatProfit = board;
+			if (ProfitConfig.get().syncWithSidebar && Math.abs(board - chatProfit) > tolerance) chatProfit = board;
 		}
 	}
 
-	/** Called for every game chat message. Only used when no scoreboard balance is available. */
+	// Only messages that are about YOU, anchored at the start of the line so that
+	// other players' sales/payments and player chat lines never match.
+	private static final Pattern GAIN_PAID = Pattern.compile(
+			"^\\W*(?:\\[[^\\]]*\\]\\s*)*\\w{1,16} (?:has )?(?:paid|sent|gave) you\\b.*", Pattern.CASE_INSENSITIVE);
+	private static final Pattern GAIN_SOLD = Pattern.compile(
+			"^\\W*you (?:have )?(?:successfully )?sold\\b.*", Pattern.CASE_INSENSITIVE);
+	private static final Pattern GAIN_RECEIVED = Pattern.compile(
+			"^\\W*you (?:have )?received\\b.*", Pattern.CASE_INSENSITIVE);
+	private static final Pattern LOSS_PAID = Pattern.compile(
+			"^\\W*you (?:have )?(?:paid|sent)\\b.*", Pattern.CASE_INSENSITIVE);
+
+	private static String lastCounted = "(none yet)";
+
+	/** Called for every system chat message. */
 	public static void onChat(String raw) {
 		String msg = normalize(raw);
-		String low = msg.toLowerCase();
 
 		Matcher m = AMOUNT.matcher(msg);
 		if (!m.find()) return;
 		Double v = toNumber(m.group(1), m.group(2));
 		if (v == null) return;
 
-		if (low.contains("paid you") || low.contains("sent you") || low.contains("you received")
-				|| (low.contains("sold") && low.contains("for"))) {
+		ProfitConfig c = ProfitConfig.get();
+		if (c.countSales && GAIN_SOLD.matcher(msg).matches()) {
 			chatProfit += v;
-		} else if (low.contains("you paid") || low.contains("you sent")) {
+			lastCounted = "+ " + msg;
+		} else if (c.countPayments && (GAIN_PAID.matcher(msg).matches() || GAIN_RECEIVED.matcher(msg).matches())) {
+			chatProfit += v;
+			lastCounted = "+ " + msg;
+		} else if (c.countPayments && LOSS_PAID.matcher(msg).matches()) {
 			chatProfit -= v;
+			lastCounted = "- " + msg;
 		}
 	}
 
@@ -213,6 +230,7 @@ public final class ProfitTracker {
 	}
 
 	public static String status() {
-		return "baseline=" + baseline + " current=" + current + " chatProfit=" + chatProfit;
+		return "baseline=" + baseline + " current=" + current + " chatProfit=" + chatProfit
+				+ " lastCounted=" + lastCounted;
 	}
 }

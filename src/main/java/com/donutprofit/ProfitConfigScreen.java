@@ -6,6 +6,7 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.Drawable;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
+import net.minecraft.client.gui.widget.ClickableWidget;
 import net.minecraft.client.gui.widget.SliderWidget;
 import net.minecraft.text.Text;
 
@@ -61,11 +62,11 @@ public class ProfitConfigScreen extends Screen {
 		int tw = (PW - PAD * 2 - gap * (TABS.length - 1)) / TABS.length;
 		for (int i = 0; i < TABS.length; i++) {
 			final int idx = i;
-			addDrawableChild(new TabButton(px + PAD + i * (tw + gap), py + 40, tw, 20, TABS[i], idx, () -> tab == idx, () -> {
+			addTab(px + PAD + i * (tw + gap), py + 40, tw, 20, TABS[i], () -> tab == idx, () -> {
 				tab = idx;
 				lastTab = idx;
 				this.clearAndInit();
-			}));
+			});
 		}
 
 		int x = px + PAD;
@@ -74,28 +75,28 @@ public class ProfitConfigScreen extends Screen {
 
 		switch (tab) {
 			case 0 -> {
-				addDrawableChild(new ToggleRow(x, y, w, ROW_H, "HUD Enabled", () -> c.enabled, v -> c.enabled = v)); y += PITCH;
-				addDrawableChild(new CycleRow(x, y, w, ROW_H, "Position", ProfitConfig.ANCHORS, () -> c.anchor, v -> c.anchor = v, null)); y += PITCH;
-				addDrawableChild(new SliderRow(x, y, w, ROW_H, "X Offset", -300, 300, c.offsetX, v -> c.offsetX = (int) Math.round(v), "px")); y += PITCH;
-				addDrawableChild(new SliderRow(x, y, w, ROW_H, "Y Offset", 0, 300, c.offsetY, v -> c.offsetY = (int) Math.round(v), "px")); y += PITCH;
-				addDrawableChild(new SliderRow(x, y, w, ROW_H, "Size", 50, 250, c.scale * 100.0, v -> c.scale = v.floatValue() / 100f, "%"));
+				addToggle(x, y, w, ROW_H, "HUD Enabled", () -> c.enabled, v -> c.enabled = v); y += PITCH;
+				addCycle(x, y, w, ROW_H, "Position", ProfitConfig.ANCHORS, () -> c.anchor, v -> c.anchor = v, null); y += PITCH;
+				addSlider(x, y, w, ROW_H, "X Offset", -300, 300, c.offsetX, v -> c.offsetX = (int) Math.round(v), "px"); y += PITCH;
+				addSlider(x, y, w, ROW_H, "Y Offset", 0, 300, c.offsetY, v -> c.offsetY = (int) Math.round(v), "px"); y += PITCH;
+				addSlider(x, y, w, ROW_H, "Size", 50, 250, c.scale * 100.0, v -> c.scale = v.floatValue() / 100f, "%");
 			}
 			case 1 -> {
-				addDrawableChild(new CycleRow(x, y, w, ROW_H, "Colour", ProfitConfig.COLOR_MODES, () -> c.colorMode, v -> c.colorMode = v,
-						() -> c.colorMode == 0 ? hsb(time(), 0.8f, 1f) : (0xFF000000 | ProfitConfig.COLOR_VALUES[c.colorMode]))); y += PITCH;
-				addDrawableChild(new SliderRow(x, y, w, ROW_H, "Background", 0, 100, c.backgroundOpacity, v -> c.backgroundOpacity = (int) Math.round(v), "%")); y += PITCH;
-				addDrawableChild(new SliderRow(x, y, w, ROW_H, "Animation Speed", 10, 400, c.rainbowSpeed * 100.0, v -> c.rainbowSpeed = v.floatValue() / 100f, "%"));
+				addCycle(x, y, w, ROW_H, "Colour", ProfitConfig.COLOR_MODES, () -> c.colorMode, v -> c.colorMode = v,
+						() -> c.colorMode == 0 ? hsb(time(), 0.8f, 1f) : (0xFF000000 | ProfitConfig.COLOR_VALUES[c.colorMode])); y += PITCH;
+				addSlider(x, y, w, ROW_H, "Background", 0, 100, c.backgroundOpacity, v -> c.backgroundOpacity = (int) Math.round(v), "%"); y += PITCH;
+				addSlider(x, y, w, ROW_H, "Animation Speed", 10, 400, c.rainbowSpeed * 100.0, v -> c.rainbowSpeed = v.floatValue() / 100f, "%");
 			}
 			case 2 -> {
-				addDrawableChild(new ToggleRow(x, y, w, ROW_H, "Title", () -> c.showTitle, v -> c.showTitle = v)); y += PITCH;
-				addDrawableChild(new ToggleRow(x, y, w, ROW_H, "Border", () -> c.showBorder, v -> c.showBorder = v)); y += PITCH;
-				addDrawableChild(new ToggleRow(x, y, w, ROW_H, "Accent Bar", () -> c.showAccentBar, v -> c.showAccentBar = v)); y += PITCH;
-				addDrawableChild(new ToggleRow(x, y, w, ROW_H, "Plus Sign", () -> c.showPlusSign, v -> c.showPlusSign = v));
+				addToggle(x, y, w, ROW_H, "Title", () -> c.showTitle, v -> c.showTitle = v); y += PITCH;
+				addToggle(x, y, w, ROW_H, "Border", () -> c.showBorder, v -> c.showBorder = v); y += PITCH;
+				addToggle(x, y, w, ROW_H, "Accent Bar", () -> c.showAccentBar, v -> c.showAccentBar = v); y += PITCH;
+				addToggle(x, y, w, ROW_H, "Plus Sign", () -> c.showPlusSign, v -> c.showPlusSign = v);
 			}
 			default -> {
-				addDrawableChild(new ToggleRow(x, y, w, ROW_H, "Count Sales", () -> c.countSales, v -> c.countSales = v)); y += PITCH;
-				addDrawableChild(new ToggleRow(x, y, w, ROW_H, "Count Payments", () -> c.countPayments, v -> c.countPayments = v)); y += PITCH;
-				addDrawableChild(new ToggleRow(x, y, w, ROW_H, "Sync With Sidebar", () -> c.syncWithSidebar, v -> c.syncWithSidebar = v));
+				addToggle(x, y, w, ROW_H, "Count Sales", () -> c.countSales, v -> c.countSales = v); y += PITCH;
+				addToggle(x, y, w, ROW_H, "Count Payments", () -> c.countPayments, v -> c.countPayments = v); y += PITCH;
+				addToggle(x, y, w, ROW_H, "Sync With Sidebar", () -> c.syncWithSidebar, v -> c.syncWithSidebar = v);
 			}
 		}
 
@@ -103,20 +104,15 @@ public class ProfitConfigScreen extends Screen {
 		int fy = py + PH - 32;
 		int fg = 6;
 		int fw = (w - fg * 2) / 3;
-		addDrawableChild(new ActionButton(x, fy, fw, 20, "Reset Profit", 2, ProfitTracker::reset));
-		addDrawableChild(new ActionButton(x + fw + fg, fy, fw, 20, "Defaults", 0, () -> {
+		addAction(x, fy, fw, 20, "Reset Profit", 2, ProfitTracker::reset);
+		addAction(x + fw + fg, fy, fw, 20, "Defaults", 0, () -> {
 			ProfitConfig.resetToDefaults();
 			this.clearAndInit();
-		}));
-		addDrawableChild(new ActionButton(x + (fw + fg) * 2, fy, fw, 20, "Done", 1, this::close));
+		});
+		addAction(x + (fw + fg) * 2, fy, fw, 20, "Done", 1, this::close);
 
 		// live HUD preview, drawn last so it sits on top of the panel
 		addDrawable((ctx, mx, my, d) -> ProfitHud.draw(ctx, 0.5f));
-	}
-
-	@Override
-	public void renderBackground(DrawContext ctx, int mouseX, int mouseY, float delta) {
-		ctx.fill(0, 0, this.width, this.height, ((int) (0x55 * FADE) << 24));
 	}
 
 	@Override
@@ -145,6 +141,8 @@ public class ProfitConfigScreen extends Screen {
 			lastFrame = now;
 			float t = Math.min(1f, (now - openNanos) / 1_000_000_000f / 0.22f);
 			FADE = 1f - (1f - t) * (1f - t) * (1f - t);
+
+			ctx.fill(0, 0, width, height, ((int) (0x55 * FADE) << 24));
 
 			ctx.getMatrices().pushMatrix();
 			ctx.getMatrices().translate(0f, (1f - FADE) * 10f);
@@ -189,99 +187,52 @@ public class ProfitConfigScreen extends Screen {
 	}
 
 	// ------------------------------------------------------------------ widgets
+	// Clicks are handled by invisible vanilla widgets (alpha 0); the visuals are separate Drawables.
 
-	private static final class ToggleRow extends ButtonWidget {
-		private final String label;
-		private final Supplier<Boolean> get;
-		private float hover = 0f;
-		private float on;
-
-		ToggleRow(int x, int y, int w, int h, String label, Supplier<Boolean> get, Consumer<Boolean> set) {
-			super(x, y, w, h, Text.literal(label), b -> set.accept(!get.get()), DEFAULT_NARRATION_SUPPLIER);
-			this.label = label;
-			this.get = get;
-			this.on = get.get() ? 1f : 0f;
-		}
-
-		@Override
-		public void renderWidget(DrawContext ctx, int mx, int my, float delta) {
-			hover = approach(hover, isHovered() ? 1f : 0f);
-			on = approach(on, get.get() ? 1f : 0f);
-			ctx.getMatrices().pushMatrix();
-			ctx.getMatrices().translate(0f, (1f - FADE) * 10f);
-
-			int x = getX(), y = getY(), w = getWidth(), h = getHeight();
-			rowBg(ctx, x, y, w, h, hover);
-			ctx.drawText(tr(), label, x + 10, y + (h - 8) / 2, fa(0xFFE8E8F0), false);
-
-			int sw = 32, sh = 14;
-			int sx = x + w - sw - 10, sy = y + (h - sh) / 2;
-			int track = mix(0xFF3A3A4A, accent(time()), on);
-			rrect(ctx, sx, sy, sw, sh, 7, track);
-			int kx = sx + 2 + Math.round(on * (sw - 14));
-			rrect(ctx, kx, sy + 2, 10, 10, 5, 0xFFFFFFFF);
-
-			ctx.getMatrices().popMatrix();
-		}
+	private ButtonWidget hit(int x, int y, int w, int h, Runnable action) {
+		ButtonWidget b = ButtonWidget.builder(Text.empty(), btn -> action.run()).dimensions(x, y, w, h).build();
+		b.setAlpha(0f);
+		return addDrawableChild(b);
 	}
 
-	private static final class CycleRow extends ButtonWidget {
-		private final String label;
-		private final String[] options;
-		private final Supplier<Integer> get;
-		private final IntSupplier dot;
-		private float hover = 0f;
+	private void addToggle(int x, int y, int w, int h, String label, Supplier<Boolean> get, Consumer<Boolean> set) {
+		ButtonWidget b = hit(x, y, w, h, () -> set.accept(!get.get()));
+		addDrawable(new ToggleVisual(b, label, get));
+	}
 
-		CycleRow(int x, int y, int w, int h, String label, String[] options, Supplier<Integer> get, Consumer<Integer> set, IntSupplier dot) {
-			super(x, y, w, h, Text.literal(label), b -> set.accept((get.get() + 1) % options.length), DEFAULT_NARRATION_SUPPLIER);
-			this.label = label;
-			this.options = options;
-			this.get = get;
-			this.dot = dot;
-		}
+	private void addCycle(int x, int y, int w, int h, String label, String[] options,
+						  Supplier<Integer> get, Consumer<Integer> set, IntSupplier dot) {
+		ButtonWidget b = hit(x, y, w, h, () -> set.accept((get.get() + 1) % options.length));
+		addDrawable(new CycleVisual(b, label, options, get, dot));
+	}
 
-		@Override
-		public void renderWidget(DrawContext ctx, int mx, int my, float delta) {
-			hover = approach(hover, isHovered() ? 1f : 0f);
-			ctx.getMatrices().pushMatrix();
-			ctx.getMatrices().translate(0f, (1f - FADE) * 10f);
+	private void addSlider(int x, int y, int w, int h, String label, double min, double max,
+						   double current, Consumer<Double> set, String unit) {
+		SliderRow s = new SliderRow(x, y, w, h, min, max, current, set);
+		addDrawableChild(s);
+		addDrawable(new SliderVisual(s, label, min, max, unit));
+	}
 
-			int x = getX(), y = getY(), w = getWidth(), h = getHeight();
-			TextRenderer tr = tr();
-			rowBg(ctx, x, y, w, h, hover);
-			ctx.drawText(tr, label, x + 10, y + (h - 8) / 2, fa(0xFFE8E8F0), false);
+	private void addTab(int x, int y, int w, int h, String label, Supplier<Boolean> selected, Runnable action) {
+		ButtonWidget b = hit(x, y, w, h, action);
+		addDrawable(new TabVisual(b, label, selected));
+	}
 
-			String v = options[get.get()];
-			int chipW = tr.getWidth(v) + 28 + (dot != null ? 12 : 0);
-			int chipH = 16;
-			int cx = x + w - chipW - 8, cy = y + (h - chipH) / 2;
-			rrect(ctx, cx, cy, chipW, chipH, 8, ((int) (0x30 + hover * 0x20) << 24) | 0xFFFFFF);
-			int tx = cx + 8;
-			if (dot != null) {
-				rrect(ctx, tx, cy + 4, 8, 8, 4, dot.getAsInt());
-				tx += 12;
-			}
-			ctx.drawText(tr, v, tx, cy + 4, fa(0xFFFFFFFF), false);
-			ctx.drawText(tr, "›", cx + chipW - 11, cy + 4, fa(0xFFB0B0C0), false);
-
-			ctx.getMatrices().popMatrix();
-		}
+	private void addAction(int x, int y, int w, int h, String label, int style, Runnable action) {
+		ButtonWidget b = hit(x, y, w, h, action);
+		addDrawable(new ActionVisual(b, label, style));
 	}
 
 	private static final class SliderRow extends SliderWidget {
-		private final String label;
-		private final String unit;
 		private final double min, max;
 		private final Consumer<Double> set;
-		private float hover = 0f;
 
-		SliderRow(int x, int y, int w, int h, String label, double min, double max, double current, Consumer<Double> set, String unit) {
-			super(x, y, w, h, Text.literal(label), Math.max(0.0, Math.min(1.0, (current - min) / (max - min))));
-			this.label = label;
-			this.unit = unit;
+		SliderRow(int x, int y, int w, int h, double min, double max, double current, Consumer<Double> set) {
+			super(x, y, w, h, Text.empty(), Math.max(0.0, Math.min(1.0, (current - min) / (max - min))));
 			this.min = min;
 			this.max = max;
 			this.set = set;
+			this.setAlpha(0f);
 		}
 
 		@Override
@@ -293,22 +244,122 @@ public class ProfitConfigScreen extends Screen {
 			set.accept(min + this.value * (max - min));
 		}
 
+		double val() {
+			return this.value;
+		}
+	}
+
+	private static final class ToggleVisual implements Drawable {
+		private final ClickableWidget w;
+		private final String label;
+		private final Supplier<Boolean> get;
+		private float hover = 0f;
+		private float on;
+
+		ToggleVisual(ClickableWidget w, String label, Supplier<Boolean> get) {
+			this.w = w;
+			this.label = label;
+			this.get = get;
+			this.on = get.get() ? 1f : 0f;
+		}
+
 		@Override
-		public void renderWidget(DrawContext ctx, int mx, int my, float delta) {
-			hover = approach(hover, (isHovered() || isFocused()) ? 1f : 0f);
+		public void render(DrawContext ctx, int mx, int my, float delta) {
+			hover = approach(hover, w.isHovered() ? 1f : 0f);
+			on = approach(on, get.get() ? 1f : 0f);
 			ctx.getMatrices().pushMatrix();
 			ctx.getMatrices().translate(0f, (1f - FADE) * 10f);
 
-			int x = getX(), y = getY(), w = getWidth(), h = getHeight();
-			TextRenderer tr = tr();
-			rowBg(ctx, x, y, w, h, hover);
-			ctx.drawText(tr, label, x + 10, y + 4, fa(0xFFE8E8F0), false);
-			String v = Math.round(min + this.value * (max - min)) + unit;
-			ctx.drawText(tr, v, x + w - 10 - tr.getWidth(v), y + 4, fa(0xFFFFFFFF), false);
+			int x = w.getX(), y = w.getY(), ww = w.getWidth(), h = w.getHeight();
+			rowBg(ctx, x, y, ww, h, hover);
+			ctx.drawText(tr(), label, x + 10, y + (h - 8) / 2, fa(0xFFE8E8F0), false);
 
-			int tx = x + 4, tw = w - 8, ty = y + h - 7;
+			int sw = 32, sh = 14;
+			int sx = x + ww - sw - 10, sy = y + (h - sh) / 2;
+			int track = mix(0xFF3A3A4A, accent(time()), on);
+			rrect(ctx, sx, sy, sw, sh, 7, track);
+			int kx = sx + 2 + Math.round(on * (sw - 14));
+			rrect(ctx, kx, sy + 2, 10, 10, 5, 0xFFFFFFFF);
+
+			ctx.getMatrices().popMatrix();
+		}
+	}
+
+	private static final class CycleVisual implements Drawable {
+		private final ClickableWidget w;
+		private final String label;
+		private final String[] options;
+		private final Supplier<Integer> get;
+		private final IntSupplier dot;
+		private float hover = 0f;
+
+		CycleVisual(ClickableWidget w, String label, String[] options, Supplier<Integer> get, IntSupplier dot) {
+			this.w = w;
+			this.label = label;
+			this.options = options;
+			this.get = get;
+			this.dot = dot;
+		}
+
+		@Override
+		public void render(DrawContext ctx, int mx, int my, float delta) {
+			hover = approach(hover, w.isHovered() ? 1f : 0f);
+			ctx.getMatrices().pushMatrix();
+			ctx.getMatrices().translate(0f, (1f - FADE) * 10f);
+
+			int x = w.getX(), y = w.getY(), ww = w.getWidth(), h = w.getHeight();
+			TextRenderer tr = tr();
+			rowBg(ctx, x, y, ww, h, hover);
+			ctx.drawText(tr, label, x + 10, y + (h - 8) / 2, fa(0xFFE8E8F0), false);
+
+			String v = options[get.get()];
+			int chipW = tr.getWidth(v) + 28 + (dot != null ? 12 : 0);
+			int chipH = 16;
+			int cx = x + ww - chipW - 8, cy = y + (h - chipH) / 2;
+			rrect(ctx, cx, cy, chipW, chipH, 8, ((int) (0x30 + hover * 0x20) << 24) | 0xFFFFFF);
+			int tx = cx + 8;
+			if (dot != null) {
+				rrect(ctx, tx, cy + 4, 8, 8, 4, dot.getAsInt());
+				tx += 12;
+			}
+			ctx.drawText(tr, v, tx, cy + 4, fa(0xFFFFFFFF), false);
+			ctx.drawText(tr, "\u203a", cx + chipW - 11, cy + 4, fa(0xFFB0B0C0), false);
+
+			ctx.getMatrices().popMatrix();
+		}
+	}
+
+	private static final class SliderVisual implements Drawable {
+		private final SliderRow w;
+		private final String label, unit;
+		private final double min, max;
+		private float hover = 0f;
+
+		SliderVisual(SliderRow w, String label, double min, double max, String unit) {
+			this.w = w;
+			this.label = label;
+			this.min = min;
+			this.max = max;
+			this.unit = unit;
+		}
+
+		@Override
+		public void render(DrawContext ctx, int mx, int my, float delta) {
+			hover = approach(hover, (w.isHovered() || w.isFocused()) ? 1f : 0f);
+			ctx.getMatrices().pushMatrix();
+			ctx.getMatrices().translate(0f, (1f - FADE) * 10f);
+
+			int x = w.getX(), y = w.getY(), ww = w.getWidth(), h = w.getHeight();
+			double value = w.val();
+			TextRenderer tr = tr();
+			rowBg(ctx, x, y, ww, h, hover);
+			ctx.drawText(tr, label, x + 10, y + 4, fa(0xFFE8E8F0), false);
+			String v = Math.round(min + value * (max - min)) + unit;
+			ctx.drawText(tr, v, x + ww - 10 - tr.getWidth(v), y + 4, fa(0xFFFFFFFF), false);
+
+			int tx = x + 4, tw = ww - 8, ty = y + h - 7;
 			rrect(ctx, tx, ty, tw, 3, 1, 0x40FFFFFF);
-			int fillW = (int) (tw * this.value);
+			int fillW = (int) (tw * value);
 			for (int i = 0; i < fillW; i++) {
 				ctx.fill(tx + i, ty, tx + i + 1, ty + 3, fa(accent(time() - i / (float) tw * 0.6f)));
 			}
@@ -319,37 +370,38 @@ public class ProfitConfigScreen extends Screen {
 		}
 	}
 
-	private static final class TabButton extends ButtonWidget {
+	private static final class TabVisual implements Drawable {
+		private final ClickableWidget w;
 		private final String label;
 		private final Supplier<Boolean> selected;
 		private float hover = 0f;
 		private float sel;
 
-		TabButton(int x, int y, int w, int h, String label, int index, Supplier<Boolean> selected, Runnable onPress) {
-			super(x, y, w, h, Text.literal(label), b -> onPress.run(), DEFAULT_NARRATION_SUPPLIER);
+		TabVisual(ClickableWidget w, String label, Supplier<Boolean> selected) {
+			this.w = w;
 			this.label = label;
 			this.selected = selected;
 			this.sel = selected.get() ? 1f : 0f;
 		}
 
 		@Override
-		public void renderWidget(DrawContext ctx, int mx, int my, float delta) {
-			hover = approach(hover, isHovered() ? 1f : 0f);
+		public void render(DrawContext ctx, int mx, int my, float delta) {
+			hover = approach(hover, w.isHovered() ? 1f : 0f);
 			sel = approach(sel, selected.get() ? 1f : 0f);
 			ctx.getMatrices().pushMatrix();
 			ctx.getMatrices().translate(0f, (1f - FADE) * 10f);
 
-			int x = getX(), y = getY(), w = getWidth(), h = getHeight();
+			int x = w.getX(), y = w.getY(), ww = w.getWidth(), h = w.getHeight();
 			TextRenderer tr = tr();
 			if (hover > 0.01f || sel > 0.01f) {
-				rrect(ctx, x, y, w, h, 6, ((int) (hover * 0x14 + sel * 0x18) << 24) | 0xFFFFFF);
+				rrect(ctx, x, y, ww, h, 6, ((int) (hover * 0x14 + sel * 0x18) << 24) | 0xFFFFFF);
 			}
 			int col = mix(0xFF8A8A9C, 0xFFFFFFFF, Math.max(sel, hover * 0.7f));
-			ctx.drawText(tr, label, x + (w - tr.getWidth(label)) / 2, y + (h - 8) / 2, fa(col), false);
+			ctx.drawText(tr, label, x + (ww - tr.getWidth(label)) / 2, y + (h - 8) / 2, fa(col), false);
 
-			int lw = Math.round((w - 14) * sel);
+			int lw = Math.round((ww - 14) * sel);
 			for (int i = 0; i < lw; i++) {
-				ctx.fill(x + (w - lw) / 2 + i, y + h - 2, x + (w - lw) / 2 + i + 1, y + h, fa(accent(time() - i / (float) w)));
+				ctx.fill(x + (ww - lw) / 2 + i, y + h - 2, x + (ww - lw) / 2 + i + 1, y + h, fa(accent(time() - i / (float) ww)));
 			}
 
 			ctx.getMatrices().popMatrix();
@@ -357,43 +409,43 @@ public class ProfitConfigScreen extends Screen {
 	}
 
 	/** style: 0 = normal, 1 = primary (accent filled), 2 = danger. */
-	private static final class ActionButton extends ButtonWidget {
+	private static final class ActionVisual implements Drawable {
+		private final ClickableWidget w;
 		private final String label;
 		private final int style;
 		private float hover = 0f;
 
-		ActionButton(int x, int y, int w, int h, String label, int style, Runnable onPress) {
-			super(x, y, w, h, Text.literal(label), b -> onPress.run(), DEFAULT_NARRATION_SUPPLIER);
+		ActionVisual(ClickableWidget w, String label, int style) {
+			this.w = w;
 			this.label = label;
 			this.style = style;
 		}
 
 		@Override
-		public void renderWidget(DrawContext ctx, int mx, int my, float delta) {
-			hover = approach(hover, isHovered() ? 1f : 0f);
+		public void render(DrawContext ctx, int mx, int my, float delta) {
+			hover = approach(hover, w.isHovered() ? 1f : 0f);
 			ctx.getMatrices().pushMatrix();
 			ctx.getMatrices().translate(0f, (1f - FADE) * 10f);
 
-			int x = getX(), y = getY(), w = getWidth(), h = getHeight();
+			int x = w.getX(), y = w.getY(), ww = w.getWidth(), h = w.getHeight();
 			TextRenderer tr = tr();
 			int textCol = 0xFFFFFFFF;
 			if (style == 1) {
-				// gradient fill, rounded by clipping the first/last columns
-				for (int i = 0; i < w; i++) {
+				for (int i = 0; i < ww; i++) {
 					int inset = 0;
 					if (i < 5) inset = 5 - i;
-					else if (i >= w - 5) inset = i - (w - 6);
-					int col = mix(accent(time() - i / (float) w * 0.6f), 0xFFFFFFFF, hover * 0.25f);
+					else if (i >= ww - 5) inset = i - (ww - 6);
+					int col = mix(accent(time() - i / (float) ww * 0.6f), 0xFFFFFFFF, hover * 0.25f);
 					ctx.fill(x + i, y + Math.min(inset, 3), x + i + 1, y + h - Math.min(inset, 3), fa(col));
 				}
 				textCol = 0xFF101018;
 			} else if (style == 2) {
-				rrect(ctx, x, y, w, h, 5, mix(0x30FF5555, 0x66FF5555, hover));
+				rrect(ctx, x, y, ww, h, 5, mix(0x30FF5555, 0x66FF5555, hover));
 				textCol = mix(0xFFFF9090, 0xFFFFFFFF, hover);
 			} else {
-				rrect(ctx, x, y, w, h, 5, ((int) (0x28 + hover * 0x26) << 24) | 0xFFFFFF);
+				rrect(ctx, x, y, ww, h, 5, ((int) (0x28 + hover * 0x26) << 24) | 0xFFFFFF);
 			}
-			ctx.drawText(tr, label, x + (w - tr.getWidth(label)) / 2, y + (h - 8) / 2, fa(textCol), false);
+			ctx.drawText(tr, label, x + (ww - tr.getWidth(label)) / 2, y + (h - 8) / 2, fa(textCol), false);
 
 			ctx.getMatrices().popMatrix();
 		}

@@ -36,12 +36,12 @@ public class ProfitConfigScreen extends Screen {
 		addDrawableChild(cycle(left, y, "Colour", ProfitConfig.COLOR_MODES, () -> c.colorMode, v -> c.colorMode = v)); y += ROW_H;
 		addDrawableChild(slider(left, y, "X Offset", -300, 300, () -> c.offsetX, v -> c.offsetX = (int) Math.round(v), "px")); y += ROW_H;
 		addDrawableChild(slider(left, y, "Y Offset", 0, 300, () -> c.offsetY, v -> c.offsetY = (int) Math.round(v), "px")); y += ROW_H;
-		addDrawableChild(slider(left, y, "Size", 50, 250, () -> c.scale * 100, v -> c.scale = (float) v / 100f, "%")); y += ROW_H;
+		addDrawableChild(slider(left, y, "Size", 50, 250, () -> c.scale * 100, v -> c.scale = v.floatValue() / 100f, "%")); y += ROW_H;
 
 		// ----- right column: style + tracking -----
 		y = top;
 		addDrawableChild(slider(right, y, "Background", 0, 100, () -> c.backgroundOpacity, v -> c.backgroundOpacity = (int) Math.round(v), "%")); y += ROW_H;
-		addDrawableChild(slider(right, y, "Anim Speed", 10, 400, () -> c.rainbowSpeed * 100, v -> c.rainbowSpeed = (float) v / 100f, "%")); y += ROW_H;
+		addDrawableChild(slider(right, y, "Anim Speed", 10, 400, () -> c.rainbowSpeed * 100, v -> c.rainbowSpeed = v.floatValue() / 100f, "%")); y += ROW_H;
 		addDrawableChild(toggle(right, y, "Title", () -> c.showTitle, v -> c.showTitle = v)); y += ROW_H;
 		addDrawableChild(toggle(right, y, "Border", () -> c.showBorder, v -> c.showBorder = v)); y += ROW_H;
 		addDrawableChild(toggle(right, y, "Accent Bar", () -> c.showAccentBar, v -> c.showAccentBar = v)); y += ROW_H;

@@ -6,6 +6,7 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallba
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
+import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
 import net.minecraft.client.MinecraftClient;
@@ -25,6 +26,7 @@ public class ProfitClient implements ClientModInitializer {
 	public static final String MOD_ID = "donutprofit";
 
 	private static KeyBinding openMenuKey;
+	private static KeyBinding paymentsKey;
 
 	@Override
 	public void onInitializeClient() {
@@ -37,10 +39,27 @@ public class ProfitClient implements ClientModInitializer {
 				KeyBinding.Category.create(Identifier.of(MOD_ID, "main"))
 		));
 
+		paymentsKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+				"key.donutprofit.payments",
+				InputUtil.Type.KEYSYM,
+				GLFW.GLFW_KEY_G,
+				KeyBinding.Category.create(Identifier.of(MOD_ID, "main"))
+		));
+
+		// Draw the HUD (and make payment checkboxes clickable) on top of every other screen, e.g. chat.
+		ScreenEvents.AFTER_INIT.register((client, screen, scaledWidth, scaledHeight) -> {
+			if (screen instanceof ProfitConfigScreen) return;
+			ScreenEvents.afterRender(screen).register((scr, ctx, mouseX, mouseY, tickDelta) ->
+					ProfitHud.drawOnScreen(ctx, mouseX, mouseY));
+		});
+
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
 			ProfitTracker.tick(client);
 			while (openMenuKey.wasPressed()) {
 				if (client.currentScreen == null) client.setScreen(new ProfitConfigScreen(null));
+			}
+			while (paymentsKey.wasPressed()) {
+				if (client.currentScreen == null) client.setScreen(new ProfitPaymentsScreen());
 			}
 		});
 
@@ -64,6 +83,11 @@ public class ProfitClient implements ClientModInitializer {
 						.then(ClientCommandManager.literal("reset").executes(ctx -> {
 							ProfitTracker.reset();
 							ctx.getSource().sendFeedback(Text.literal("Profit of the day reset."));
+							return 1;
+						}))
+						.then(ClientCommandManager.literal("clear").executes(ctx -> {
+							ProfitPayments.clear();
+							ctx.getSource().sendFeedback(Text.literal("Payments list cleared."));
 							return 1;
 						}))
 						.then(ClientCommandManager.literal("toggle").executes(ctx -> {

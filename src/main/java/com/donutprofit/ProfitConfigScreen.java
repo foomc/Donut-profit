@@ -96,13 +96,15 @@ public class ProfitConfigScreen extends Screen {
 				addCycle(x, y, w, "Colour", ProfitConfig.COLOR_MODES, () -> c.colorMode, v -> c.colorMode = v,
 						() -> c.colorMode == 0 ? hsb(time(), 0.8f, 1f) : (0xFF000000 | ProfitConfig.COLOR_VALUES[c.colorMode])); y += PITCH;
 				addSlider(x, y, w, "Background", 0, 100, c.backgroundOpacity, v -> c.backgroundOpacity = (int) Math.round(v), "%"); y += PITCH;
-				addSlider(x, y, w, "Animation Speed", 10, 400, c.rainbowSpeed * 100.0, v -> c.rainbowSpeed = v.floatValue() / 100f, "%");
+				addSlider(x, y, w, "Animation Speed", 10, 400, c.rainbowSpeed * 100.0, v -> c.rainbowSpeed = v.floatValue() / 100f, "%"); y += PITCH;
+				addSlider(x, y, w, "Payment Rows", 1, 8, c.paymentRows, v -> c.paymentRows = (int) Math.round(v), "");
 			}
 			case 2 -> {
 				addToggle(x, y, w, "Title", () -> c.showTitle, v -> c.showTitle = v); y += PITCH;
 				addToggle(x, y, w, "Border", () -> c.showBorder, v -> c.showBorder = v); y += PITCH;
 				addToggle(x, y, w, "Accent Bar", () -> c.showAccentBar, v -> c.showAccentBar = v); y += PITCH;
-				addToggle(x, y, w, "Plus Sign", () -> c.showPlusSign, v -> c.showPlusSign = v);
+				addToggle(x, y, w, "Plus Sign", () -> c.showPlusSign, v -> c.showPlusSign = v); y += PITCH;
+				addToggle(x, y, w, "Payments List", () -> c.showPayments, v -> c.showPayments = v);
 			}
 			case 3 -> {
 				addToggle(x, y, w, "Count Sales", () -> c.countSales, v -> c.countSales = v); y += PITCH;

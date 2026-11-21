@@ -81,7 +81,8 @@ public final class ProfitTracker {
 	// Only messages that are about YOU, anchored at the start of the line so that
 	// other players' sales/payments and player chat lines never match.
 	private static final Pattern GAIN_PAID = Pattern.compile(
-			"^\\W*(?:\\[[^\\]]*\\]\\s*)*\\w{1,16} (?:has )?(?:paid|sent|gave) you\\b.*", Pattern.CASE_INSENSITIVE);
+			"^\\W*(?:\\[[^\\]]*\\]\\s*)*(\\w{1,16}) (?:has )?(?:paid|sent|gave) you\\b.*", Pattern.CASE_INSENSITIVE);
+	private static final Pattern FROM_NAME = Pattern.compile("\\bfrom\\s+(\\w{1,16})", Pattern.CASE_INSENSITIVE);
 	private static final Pattern GAIN_SOLD = Pattern.compile(
 			"^\\W*you (?:have )?(?:successfully )?sold\\b.*", Pattern.CASE_INSENSITIVE);
 	private static final Pattern GAIN_RECEIVED = Pattern.compile(
@@ -101,11 +102,20 @@ public final class ProfitTracker {
 		if (v == null) return;
 
 		ProfitConfig c = ProfitConfig.get();
+		Matcher paid = GAIN_PAID.matcher(msg);
 		if (c.countSales && GAIN_SOLD.matcher(msg).matches()) {
 			chatProfit += v;
 			lastCounted = "+ " + msg;
-		} else if (c.countPayments && (GAIN_PAID.matcher(msg).matches() || GAIN_RECEIVED.matcher(msg).matches())) {
-			chatProfit += v;
+		} else if (paid.matches()) {
+			if (c.countPayments) chatProfit += v;
+			if (c.showPayments) ProfitPayments.add(paid.group(1), v);
+			lastCounted = "+ " + msg;
+		} else if (GAIN_RECEIVED.matcher(msg).matches()) {
+			if (c.countPayments) chatProfit += v;
+			if (c.showPayments) {
+				Matcher from = FROM_NAME.matcher(msg);
+				ProfitPayments.add(from.find() ? from.group(1) : "Someone", v);
+			}
 			lastCounted = "+ " + msg;
 		} else if (c.countPayments && LOSS_PAID.matcher(msg).matches()) {
 			chatProfit -= v;

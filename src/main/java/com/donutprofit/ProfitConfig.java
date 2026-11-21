@@ -33,6 +33,8 @@ public final class ProfitConfig {
 	public boolean countSales = true;
 	public boolean countPayments = true;
 	public boolean syncWithSidebar = true;
+	public boolean showPayments = true;   // payments list under the profit panel
+	public int paymentRows = 5;           // how many payments show at once
 
 	// menu appearance
 	public int menuAccent = 0;        // index into MENU_ACCENTS
@@ -89,6 +91,7 @@ public final class ProfitConfig {
 		menuAccent = Math.floorMod(menuAccent, MENU_ACCENTS.length);
 		menuCorners = Math.floorMod(menuCorners, MENU_CORNERS.length);
 		menuTheme = Math.floorMod(menuTheme, MENU_THEMES.length);
+		paymentRows = Math.max(1, Math.min(8, paymentRows));
 		menuHue = Math.max(0, Math.min(360, menuHue));
 		menuOpacity = Math.max(40, Math.min(100, menuOpacity));
 		scale = Math.max(0.5f, Math.min(2.5f, scale));

@@ -108,11 +108,11 @@ public final class ProfitTracker {
 			lastCounted = "+ " + msg;
 		} else if (paid.matches()) {
 			if (c.countPayments) chatProfit += v;
-			if (c.showPayments) ProfitPayments.add(paid.group(1), v);
+			if (c.showPayments && v >= c.minPayment) ProfitPayments.add(paid.group(1), v);
 			lastCounted = "+ " + msg;
 		} else if (GAIN_RECEIVED.matcher(msg).matches()) {
 			if (c.countPayments) chatProfit += v;
-			if (c.showPayments) {
+			if (c.showPayments && v >= c.minPayment) {
 				Matcher from = FROM_NAME.matcher(msg);
 				ProfitPayments.add(from.find() ? from.group(1) : "Someone", v);
 			}

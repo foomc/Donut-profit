@@ -7,6 +7,7 @@ import net.minecraft.client.gui.Drawable;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.SliderWidget;
+import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.text.Text;
 import net.minecraft.util.Util;
 
@@ -97,7 +98,14 @@ public class ProfitConfigScreen extends Screen {
 						() -> c.colorMode == 0 ? hsb(time(), 0.8f, 1f) : (0xFF000000 | ProfitConfig.COLOR_VALUES[c.colorMode])); y += PITCH;
 				addSlider(x, y, w, "Background", 0, 100, c.backgroundOpacity, v -> c.backgroundOpacity = (int) Math.round(v), "%"); y += PITCH;
 				addSlider(x, y, w, "Animation Speed", 10, 400, c.rainbowSpeed * 100.0, v -> c.rainbowSpeed = v.floatValue() / 100f, "%"); y += PITCH;
-				addSlider(x, y, w, "Payment Rows", 1, 8, c.paymentRows, v -> c.paymentRows = (int) Math.round(v), "");
+				addSlider(x, y, w, "Payment Rows", 1, 8, c.paymentRows, v -> c.paymentRows = (int) Math.round(v), ""); y += PITCH;
+				addTextRow(x, y, w, "Min Payment", c.minPayment <= 0 ? "0" : ProfitTracker.format(c.minPayment).substring(2), t -> {
+					if (t.isBlank()) c.minPayment = 0;
+					else {
+						Double d = ProfitConfig.parseAmount(t);
+						if (d != null) c.minPayment = d;
+					}
+				});
 			}
 			case 2 -> {
 				addToggle(x, y, w, "Title", () -> c.showTitle, v -> c.showTitle = v); y += PITCH;
@@ -198,6 +206,9 @@ public class ProfitConfigScreen extends Screen {
 				txt(ctx, tr, "Sales & payments are read from chat messages", cx, hy, TEXT_DIM);
 				txt(ctx, tr, "about you. Sync fixes drift using the sidebar.", cx, hy + 11, TEXT_DIM);
 			}
+			if (tab == 1) {
+				txt(ctx, tr, "Min Payment: type an amount like 5k, 2.5m or 1b.", cx, py + 34 + PITCH * 5 + 2, TEXT_DIM);
+			}
 			if (tab >= 4) {
 				txt(ctx, tr, "Changes save automatically.", cx, py + 34 + PITCH * 5 + 2, TEXT_DIM);
 			}
@@ -229,6 +240,19 @@ public class ProfitConfigScreen extends Screen {
 		SliderRow s = new SliderRow(sx, y, TRACK_W + 8, ROW_H, min, max, current, set);
 		addDrawableChild(s);
 		addDrawable(new SliderVisual(s, x, y, w, ROW_H, label, min, max, unit));
+	}
+
+	/** Label on the left, a text box on the right. The box turns red while the text isn't a valid amount. */
+	private void addTextRow(int x, int y, int w, String label, String initial, Consumer<String> onChange) {
+		int fw = 96;
+		int fx = x + w - fw - 2;
+		TextFieldWidget f = new TextFieldWidget(this.textRenderer, fx + 5, y + (ROW_H - 8) / 2, fw - 10, 10, Text.literal(label));
+		f.setDrawsBackground(false);
+		f.setMaxLength(16);
+		f.setText(initial);
+		f.setChangedListener(onChange);
+		addDrawable(new TextBoxVisual(x, y, w, ROW_H, label, fx, fw, f));
+		addDrawableChild(f);
 	}
 
 	private void addTab(int x, int y, int w, int h, String label, Supplier<Boolean> selected, Runnable action) {
@@ -351,6 +375,38 @@ public class ProfitConfigScreen extends Screen {
 			if (swatch != null) {
 				ctx.fill(vx - 24, ty, vx - 15, ty + 9, fa(0xFF000000));
 				ctx.fill(vx - 23, ty + 1, vx - 16, ty + 8, fa(swatch.getAsInt()));
+			}
+		}
+	}
+
+	private static final class TextBoxVisual implements Drawable {
+		private final Row r;
+		private final String label;
+		private final int fx, fw;
+		private final TextFieldWidget field;
+
+		TextBoxVisual(int x, int y, int w, int h, String label, int fx, int fw, TextFieldWidget field) {
+			this.r = new Row(x, y, w, h);
+			this.label = label;
+			this.fx = fx;
+			this.fw = fw;
+			this.field = field;
+		}
+
+		@Override
+		public void render(DrawContext ctx, int mx, int my, float delta) {
+			TextRenderer tr = tr();
+			txt(ctx, tr, label, r.x, r.y + (r.h - 8) / 2, TEXT);
+
+			String t = field.getText();
+			boolean ok = t.isBlank() || ProfitConfig.parseAmount(t) != null;
+			boolean focused = field.isFocused();
+			int border = !ok ? 0xFFB5504F : (focused ? menuAccent() : 0xFF4A4A53);
+			int by = r.y + 2, bh = r.h - 4;
+			ctx.fill(fx, by, fx + fw, by + bh, fa(border));
+			ctx.fill(fx + 1, by + 1, fx + fw - 1, by + bh - 1, fa(0xFF121215));
+			if (t.isEmpty() && !focused) {
+				txt(ctx, tr, "e.g. 5k, 2.5m", fx + 5, r.y + (r.h - 8) / 2, 0xFF5E5E67);
 			}
 		}
 	}

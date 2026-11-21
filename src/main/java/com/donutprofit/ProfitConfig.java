@@ -18,6 +18,9 @@ public final class ProfitConfig {
 	public static final String[] MENU_CORNERS = {"Square", "Soft", "Round"};
 	public static final String[] MENU_THEMES = {"Dark", "Black", "Slate"};
 
+	public static final String[] MIN_PAYMENT_LABELS = {"Off", "$10", "$100", "$1K", "$10K", "$100K", "$1M", "$10M", "$100M"};
+	public static final double[] MIN_PAYMENT_VALUES = {0, 10, 100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000};
+
 	public boolean enabled = true;
 	public int anchor = 0;            // index into ANCHORS
 	public int offsetX = 0;           // pixels from the anchor
@@ -35,6 +38,7 @@ public final class ProfitConfig {
 	public boolean syncWithSidebar = true;
 	public boolean showPayments = true;   // payments list under the profit panel
 	public int paymentRows = 5;           // how many payments show at once
+	public double minPayment = 1_000;     // payments below this are not listed (profit still counts them)
 
 	// menu appearance
 	public int menuAccent = 0;        // index into MENU_ACCENTS
@@ -85,6 +89,41 @@ public final class ProfitConfig {
 		save();
 	}
 
+	private static final java.util.regex.Pattern AMOUNT_TEXT =
+			java.util.regex.Pattern.compile("^\\$?\\s*([0-9][0-9,]*(?:\\.[0-9]+)?|\\.[0-9]+)\\s*([kKmMbBtT])?$");
+
+	/** Parses "500", "$5k", "2.5m", "1,000", "1b"... Returns null when the text isn't an amount. */
+	public static Double parseAmount(String text) {
+		if (text == null) return null;
+		java.util.regex.Matcher m = AMOUNT_TEXT.matcher(text.trim());
+		if (!m.matches()) return null;
+		try {
+			double v = Double.parseDouble(m.group(1).replace(",", ""));
+			String suf = m.group(2);
+			if (suf != null) {
+				switch (Character.toUpperCase(suf.charAt(0))) {
+					case 'K' -> v *= 1_000d;
+					case 'M' -> v *= 1_000_000d;
+					case 'B' -> v *= 1_000_000_000d;
+					case 'T' -> v *= 1_000_000_000_000d;
+					default -> {}
+				}
+			}
+			return v;
+		} catch (NumberFormatException e) {
+			return null;
+		}
+	}
+
+	/** Index of the preset closest to the given minimum payment. */
+	public static int minPaymentIndex(double v) {
+		int best = 0;
+		for (int i = 0; i < MIN_PAYMENT_VALUES.length; i++) {
+			if (Math.abs(MIN_PAYMENT_VALUES[i] - v) < Math.abs(MIN_PAYMENT_VALUES[best] - v)) best = i;
+		}
+		return best;
+	}
+
 	private void clamp() {
 		anchor = Math.floorMod(anchor, ANCHORS.length);
 		colorMode = Math.floorMod(colorMode, COLOR_MODES.length);
@@ -92,6 +131,7 @@ public final class ProfitConfig {
 		menuCorners = Math.floorMod(menuCorners, MENU_CORNERS.length);
 		menuTheme = Math.floorMod(menuTheme, MENU_THEMES.length);
 		paymentRows = Math.max(1, Math.min(8, paymentRows));
+		minPayment = Math.max(0, minPayment);
 		menuHue = Math.max(0, Math.min(360, menuHue));
 		menuOpacity = Math.max(40, Math.min(100, menuOpacity));
 		scale = Math.max(0.5f, Math.min(2.5f, scale));

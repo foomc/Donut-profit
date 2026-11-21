@@ -25,6 +25,9 @@ import java.util.List;
 public class ProfitClient implements ClientModInitializer {
 	public static final String MOD_ID = "donutprofit";
 
+	// Must only be created once: Minecraft refuses to register the same category twice.
+	private static final KeyBinding.Category CATEGORY = KeyBinding.Category.create(Identifier.of(MOD_ID, "main"));
+
 	private static KeyBinding openMenuKey;
 	private static KeyBinding paymentsKey;
 
@@ -36,14 +39,14 @@ public class ProfitClient implements ClientModInitializer {
 				"key.donutprofit.menu",
 				InputUtil.Type.KEYSYM,
 				GLFW.GLFW_KEY_RIGHT_SHIFT,
-				KeyBinding.Category.create(Identifier.of(MOD_ID, "main"))
+				CATEGORY
 		));
 
 		paymentsKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
 				"key.donutprofit.payments",
 				InputUtil.Type.KEYSYM,
 				GLFW.GLFW_KEY_G,
-				KeyBinding.Category.create(Identifier.of(MOD_ID, "main"))
+				CATEGORY
 		));
 
 		// Draw the HUD (and make payment checkboxes clickable) on top of every other screen, e.g. chat.

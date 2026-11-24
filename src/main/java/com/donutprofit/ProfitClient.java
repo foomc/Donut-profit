@@ -30,6 +30,8 @@ public class ProfitClient implements ClientModInitializer {
 
 	private static KeyBinding openMenuKey;
 	private static KeyBinding paymentsKey;
+	private static KeyBinding auctionKey;
+	private static KeyBinding spinKey;
 
 	@Override
 	public void onInitializeClient() {
@@ -49,15 +51,42 @@ public class ProfitClient implements ClientModInitializer {
 				CATEGORY
 		));
 
+		auctionKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+				"key.donutprofit.auction",
+				InputUtil.Type.KEYSYM,
+				GLFW.GLFW_KEY_J,
+				CATEGORY
+		));
+		spinKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+				"key.donutprofit.spin",
+				InputUtil.Type.KEYSYM,
+				GLFW.GLFW_KEY_K,
+				CATEGORY
+		));
+
 		// Draw the HUD (and make payment checkboxes clickable) on top of every other screen, e.g. chat.
 		ScreenEvents.AFTER_INIT.register((client, screen, scaledWidth, scaledHeight) -> {
-			if (screen instanceof ProfitConfigScreen) return;
+			if (screen instanceof ProfitConfigScreen || screen instanceof AuctionScreen || screen instanceof WheelScreen) return;
 			ScreenEvents.afterRender(screen).register((scr, ctx, mouseX, mouseY, tickDelta) ->
 					ProfitHud.drawOnScreen(ctx, mouseX, mouseY));
 		});
 
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
 			ProfitTracker.tick(client);
+			AuctionManager.update();
+			while (auctionKey.wasPressed()) {
+				if (client.currentScreen == null) client.setScreen(new AuctionScreen());
+			}
+			while (spinKey.wasPressed()) {
+				if (client.currentScreen != null) continue;
+				if (AuctionManager.state == AuctionManager.State.OPEN) {
+					AuctionManager.spin();
+					client.setScreen(new WheelScreen(null));
+				} else if (AuctionManager.state != AuctionManager.State.SPINNING) {
+					AuctionManager.begin();
+					client.setScreen(new WheelScreen(null));
+				}
+			}
 			while (openMenuKey.wasPressed()) {
 				if (client.currentScreen == null) client.setScreen(new ProfitConfigScreen(null));
 			}
@@ -86,6 +115,11 @@ public class ProfitClient implements ClientModInitializer {
 						.then(ClientCommandManager.literal("reset").executes(ctx -> {
 							ProfitTracker.reset();
 							ctx.getSource().sendFeedback(Text.literal("Profit of the day reset."));
+							return 1;
+						}))
+						.then(ClientCommandManager.literal("auction").executes(ctx -> {
+							MinecraftClient mc = MinecraftClient.getInstance();
+							mc.send(() -> mc.setScreen(new AuctionScreen()));
 							return 1;
 						}))
 						.then(ClientCommandManager.literal("clear").executes(ctx -> {

@@ -38,6 +38,15 @@ public final class ProfitConfig {
 	public boolean syncWithSidebar = true;
 	public boolean showPayments = true;   // payments list under the profit panel
 	public int paymentRows = 5;           // how many payments show at once
+	// wheel auction
+	public double auctionEntry = 1_000_000;  // price of one slot
+	public int auctionMaxSlots = 5;          // max slots per person
+	public int auctionSpin = 10;             // seconds
+	public int auctionPalette = 0;           // wheel colours
+	public int auctionVolume = 70;
+	public int auctionPrize = 0;             // preset item index (-1 = held item, runtime only)
+	public String auctionPrizeName = "";     // custom prize name, empty = item name
+
 	public double minPayment = 1_000;     // payments below this are not listed (profit still counts them)
 
 	// menu appearance
@@ -132,6 +141,13 @@ public final class ProfitConfig {
 		menuTheme = Math.floorMod(menuTheme, MENU_THEMES.length);
 		paymentRows = Math.max(1, Math.min(8, paymentRows));
 		minPayment = Math.max(0, minPayment);
+		auctionEntry = Math.max(1, auctionEntry);
+		auctionMaxSlots = Math.max(1, Math.min(20, auctionMaxSlots));
+		auctionSpin = Math.max(3, Math.min(30, auctionSpin));
+		auctionPalette = Math.floorMod(auctionPalette, 5);
+		auctionVolume = Math.max(0, Math.min(100, auctionVolume));
+		if (auctionPrize < 0 || auctionPrize > 6) auctionPrize = 0;
+		if (auctionPrizeName == null) auctionPrizeName = "";
 		menuHue = Math.max(0, Math.min(360, menuHue));
 		menuOpacity = Math.max(40, Math.min(100, menuOpacity));
 		scale = Math.max(0.5f, Math.min(2.5f, scale));

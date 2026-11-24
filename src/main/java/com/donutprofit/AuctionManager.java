@@ -1,11 +1,11 @@
 package com.donutprofit;
 
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.sound.PositionedSoundInstance;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
-import net.minecraft.sound.SoundEvents;
+import net.minecraft.sound.SoundEvent;
+import net.minecraft.util.Identifier;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -204,15 +204,22 @@ public final class AuctionManager {
 		return ProfitConfig.get().auctionVolume / 100f;
 	}
 
-	public static void playTick(float pitch) {
+	private static SoundEvent tickSound, winSound;
+
+	private static void play(SoundEvent ev, float pitch) {
 		float v = volume();
-		if (v <= 0f) return;
-		MinecraftClient.getInstance().getSoundManager().play(PositionedSoundInstance.master(SoundEvents.UI_BUTTON_CLICK, pitch, v));
+		MinecraftClient mc = MinecraftClient.getInstance();
+		if (v <= 0f || mc.player == null) return;
+		mc.player.playSound(ev, v, pitch);
+	}
+
+	public static void playTick(float pitch) {
+		if (tickSound == null) tickSound = SoundEvent.of(Identifier.ofVanilla("ui.button.click"));
+		play(tickSound, pitch);
 	}
 
 	public static void playWin() {
-		float v = volume();
-		if (v <= 0f) return;
-		MinecraftClient.getInstance().getSoundManager().play(PositionedSoundInstance.master(SoundEvents.ENTITY_PLAYER_LEVELUP, 1.0f, v));
+		if (winSound == null) winSound = SoundEvent.of(Identifier.ofVanilla("entity.player.levelup"));
+		play(winSound, 1.0f);
 	}
 }

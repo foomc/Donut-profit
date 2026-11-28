@@ -102,6 +102,10 @@ public class AuctionScreen extends Screen {
 			openWheel();
 		}).dimensions(x + (bw + gap) * 4, y4, bw, 20).build());
 
+		addDrawableChild(ButtonWidget.builder(Text.literal("Bidding \u203A").formatted(Formatting.AQUA), b -> {
+			if (this.client != null) this.client.setScreen(new BidMenuScreen());
+		}).dimensions(px + PW - 14 - 70, py + 6, 70, 18).build());
+
 		// ---- volume
 		addDrawableChild(new ValueSlider(x, py + 198, w, 20, "♫ Volume", 0, 100, c.auctionVolume, "%", v -> c.auctionVolume = v));
 	}

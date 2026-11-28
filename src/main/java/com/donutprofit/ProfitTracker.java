@@ -110,6 +110,7 @@ public final class ProfitTracker {
 			if (c.countPayments) chatProfit += v;
 			if (c.showPayments && v >= c.minPayment) ProfitPayments.add(paid.group(1), v);
 			AuctionManager.onPayment(paid.group(1), v);
+			BidAuctionManager.onPayment(paid.group(1), v);
 			lastCounted = "+ " + msg;
 		} else if (GAIN_RECEIVED.matcher(msg).matches()) {
 			if (c.countPayments) chatProfit += v;
@@ -118,7 +119,10 @@ public final class ProfitTracker {
 				ProfitPayments.add(from.find() ? from.group(1) : "Someone", v);
 			}
 			Matcher from2 = FROM_NAME.matcher(msg);
-			if (from2.find()) AuctionManager.onPayment(from2.group(1), v);
+			if (from2.find()) {
+				AuctionManager.onPayment(from2.group(1), v);
+				BidAuctionManager.onPayment(from2.group(1), v);
+			}
 			lastCounted = "+ " + msg;
 		} else if (c.countPayments && LOSS_PAID.matcher(msg).matches()) {
 			chatProfit -= v;

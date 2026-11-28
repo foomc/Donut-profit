@@ -32,6 +32,7 @@ public class ProfitClient implements ClientModInitializer {
 	private static KeyBinding paymentsKey;
 	private static KeyBinding auctionKey;
 	private static KeyBinding spinKey;
+	private static KeyBinding bidKey;
 
 	@Override
 	public void onInitializeClient() {
@@ -64,9 +65,17 @@ public class ProfitClient implements ClientModInitializer {
 				CATEGORY
 		));
 
+		bidKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+				"key.donutprofit.bid",
+				InputUtil.Type.KEYSYM,
+				GLFW.GLFW_KEY_B,
+				CATEGORY
+		));
+
 		// Draw the HUD (and make payment checkboxes clickable) on top of every other screen, e.g. chat.
 		ScreenEvents.AFTER_INIT.register((client, screen, scaledWidth, scaledHeight) -> {
-			if (screen instanceof ProfitConfigScreen || screen instanceof AuctionScreen || screen instanceof WheelScreen) return;
+			if (screen instanceof ProfitConfigScreen || screen instanceof AuctionScreen || screen instanceof WheelScreen
+						|| screen instanceof BidMenuScreen || screen instanceof BidBoardScreen) return;
 			ScreenEvents.afterRender(screen).register((scr, ctx, mouseX, mouseY, tickDelta) ->
 					ProfitHud.drawOnScreen(ctx, mouseX, mouseY));
 		});
@@ -74,6 +83,10 @@ public class ProfitClient implements ClientModInitializer {
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
 			ProfitTracker.tick(client);
 			AuctionManager.update();
+			BidAuctionManager.update();
+			while (bidKey.wasPressed()) {
+				if (client.currentScreen == null) client.setScreen(new BidMenuScreen());
+			}
 			while (auctionKey.wasPressed()) {
 				if (client.currentScreen == null) client.setScreen(new AuctionScreen());
 			}
@@ -104,6 +117,11 @@ public class ProfitClient implements ClientModInitializer {
 				Identifier.of(MOD_ID, "profit_hud"),
 				ProfitHud::render
 		);
+		HudElementRegistry.attachElementBefore(
+				VanillaHudElements.CHAT,
+				Identifier.of(MOD_ID, "bid_hud"),
+				BidHud::render
+		);
 
 		ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) ->
 				dispatcher.register(ClientCommandManager.literal("profit")
@@ -120,6 +138,11 @@ public class ProfitClient implements ClientModInitializer {
 						.then(ClientCommandManager.literal("auction").executes(ctx -> {
 							MinecraftClient mc = MinecraftClient.getInstance();
 							mc.send(() -> mc.setScreen(new AuctionScreen()));
+							return 1;
+						}))
+						.then(ClientCommandManager.literal("bid").executes(ctx -> {
+							MinecraftClient mc = MinecraftClient.getInstance();
+							mc.send(() -> mc.setScreen(new BidMenuScreen()));
 							return 1;
 						}))
 						.then(ClientCommandManager.literal("clear").executes(ctx -> {

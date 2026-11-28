@@ -47,6 +47,12 @@ public final class ProfitConfig {
 	public int auctionPrize = 0;             // preset item index (-1 = held item, runtime only)
 	public String auctionPrizeName = "";     // custom prize name, empty = item name
 
+	// bidding auction
+	public double bidStart = 100_000;
+	public int bidDuration = 120;
+	public int bidMode = 0;                  // 0 = payments add up, 1 = highest single payment
+	public boolean bidAntiSnipe = true;
+
 	public double minPayment = 1_000;     // payments below this are not listed (profit still counts them)
 
 	// menu appearance
@@ -148,6 +154,9 @@ public final class ProfitConfig {
 		auctionVolume = Math.max(0, Math.min(100, auctionVolume));
 		if (auctionPrize < 0 || auctionPrize > 6) auctionPrize = 0;
 		if (auctionPrizeName == null) auctionPrizeName = "";
+		bidStart = Math.max(1, bidStart);
+		bidDuration = Math.max(15, Math.min(900, bidDuration));
+		bidMode = bidMode == 1 ? 1 : 0;
 		menuHue = Math.max(0, Math.min(360, menuHue));
 		menuOpacity = Math.max(40, Math.min(100, menuOpacity));
 		scale = Math.max(0.5f, Math.min(2.5f, scale));
